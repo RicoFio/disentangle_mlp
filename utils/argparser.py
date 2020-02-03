@@ -31,6 +31,7 @@ def get_args():
                         help='A flag indicating whether we will use GPU acceleration or not')
     parser.add_argument('--gan_type', type=str, default='gan',
                         help='Type of gan to use in our network')
+    parser.add_argument('--lr', nargs='?', default=3e-4, type=float, help='learning rule')
 
     args = parser.parse_args()
 

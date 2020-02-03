@@ -64,17 +64,11 @@ class ExperimentBuilder(nn.Module):
         self.val_data = val_data
         self.test_data = test_data
 
-        # Optimizer setting ADD if need be
-        if optimizer == 'sgd':
-            self.optimizer = optim.SGD(self.parameters(), weight_decay=weight_decay_coefficient, lr=lr)
-        else:
-            self.optimizer = optim.Adam(self.parameters(), amsgrad=False,
-                                        weight_decay=weight_decay_coefficient, lr=lr)
+        # Optimizers
+        self.optimizer_enc = optim.RMSprop(self.model.vae.encoder.parameters(), lr=lr)
+        self.optimizer_dec = optim.RMSprop(self.model.vae.decoder.parameters(), lr=lr)
+        self.optimizer_dis = optim.RMSprop(self.model.gan.dis.parameters(), lr=lr)
 
-        # Set CosineAnnealingLR as learning_rate_scheduler
-        self.learning_rate_scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer,
-                                                                            T_max=num_epochs,
-                                                                            eta_min=0.00002)
         # Generate directory names for experiment
         self.experiment_folder = os.path.abspath(experiment_name)
         self.experiment_logs = os.path.abspath(os.path.join(self.experiment_folder, "result_outputs"))

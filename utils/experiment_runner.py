@@ -19,9 +19,13 @@ rng = np.random.RandomState(seed=args.seed)
 torch.manual_seed(seed=args.seed)
 
 # Import data
-train_data = 
-val_data = 
-test_data = 
+train_loader = torch.utils.data.DataLoader(
+    datasets.MNIST('../data', train=True, download=True,
+                   transform=transforms.ToTensor()),
+    batch_size=args.batch_size, shuffle=True, **kwargs)
+test_loader = torch.utils.data.DataLoader(
+    datasets.MNIST('../data', train=False, transform=transforms.ToTensor()),
+    batch_size=args.batch_size, shuffle=True, **kwargs)
 
 # Load data
 train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True, num_workers=4)
