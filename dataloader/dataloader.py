@@ -7,9 +7,6 @@ we inherit dataset and override __len__ and __getitem__
 
 """
 
-"""
-This is from the PyTorch dataloader tutorial at pytorch.org! Thanks!
-"""
 from __future__ import print_function, division
 import os
 import torch 
