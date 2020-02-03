@@ -23,7 +23,7 @@ class VaeGanLoss(_Loss):
 		return -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
 
-	def loss_gan(self, discriminator, decoder, z, x):
+	def loss_discriminator(self, discriminator, decoder, z, x):
 
 		left = torch.log(discriminator.forward(x))
 
@@ -32,6 +32,8 @@ class VaeGanLoss(_Loss):
 		return left + right 
 
 
-	def vae_gan_loss(self, discriminator, decoder, z, recon_x, x, mu, logvar):
+	def loss_encoder(self, discriminator, recon_x, x, mu, logvar):
+		return self.loss_prior(recon_x, x, mu, logvar) + self.loss_llikelihood(discriminator, recon_x, x)
 
-		return self.loss_prior(recon_x, x, mu, logvar) + self.loss_llikelihood(discriminator, recon_x, x) + self.loss_gan(discriminator, decoder, z, x)
+	def loss_decoder(self, discriminator, recon_x, x, decoder, z, gamma=0.5):
+		return gamma * self.loss_llikelihood(discriminator, recon_x, x) - self.loss_discriminator(discriminator, decoder, z, x)

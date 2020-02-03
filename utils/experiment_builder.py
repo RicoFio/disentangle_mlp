@@ -8,13 +8,16 @@ import os
 import numpy as np
 import time
 
+from models.gan import Discriminator
+from models.vae import VAE
+
 from models.loss import VaeGanLoss
 
 from pytorch_mlp_framework.storage_utils import save_statistics
 import wandb
 
 class ExperimentBuilder(nn.Module):
-    def __init__(self, network_model, experiment_name, num_epochs, train_data, val_data,
+    def __init__(self, dis_model, experiment_name, num_epochs, train_data, val_data,
                  test_data, weight_decay_coefficient, use_gpu, optimizer, lr, continue_from_epoch=-1):
         """
         Initializes an ExperimentBuilder object. Such an object takes care of running training and evaluation of a deep net
@@ -33,19 +36,23 @@ class ExperimentBuilder(nn.Module):
         super(ExperimentBuilder, self).__init__()
 
         self.experiment_name = experiment_name
-        self.model = network_model
+        self.vae = VAE()
+        self.dis = Discriminator()
         # TODO populate hyper_parameters
         self.hyper_parameters = {}
 
         # Find GPUs and transfer computation
         if torch.cuda.device_count() > 1 and use_gpu:
             self.device = torch.cuda.current_device()
-            self.model.to(self.device)
-            self.model = nn.DataParallel(module=self.model)
+            self.vae.to(self.device)
+            self.dis.to(self.device)
+            self.vae = nn.DataParallel(module=self.vae)
+            self.dis = nn.DataParallel(module=self.dis)
             print('Using Multi GPU', self.device)
         elif torch.cuda.device_count() == 1 and use_gpu:
             self.device =  torch.cuda.current_device()
-            self.model.to(self.device)
+            self.vae.to(self.device)
+            self.dis.to(self.device)
             print('Using GPU', self.device)
         else:
             print("Using CPU")
@@ -57,7 +64,8 @@ class ExperimentBuilder(nn.Module):
                         project_name="mlp-cw3", workspace="ricofio")
                         
         # Re-initialize Model Weights
-        self.model.reset_parameters()
+        self.vae.reset_parameters()
+        self.dis.reset_parameters()
 
         # Set data
         self.train_data = train_data
@@ -65,9 +73,9 @@ class ExperimentBuilder(nn.Module):
         self.test_data = test_data
 
         # Optimizers
-        self.optimizer_enc = optim.RMSprop(self.model.vae.encoder.parameters(), lr=lr)
-        self.optimizer_dec = optim.RMSprop(self.model.vae.decoder.parameters(), lr=lr)
-        self.optimizer_dis = optim.RMSprop(self.model.gan.dis.parameters(), lr=lr)
+        self.optimizer_enc = optim.RMSprop(self.vae.encoder.parameters(), lr=lr)
+        self.optimizer_dec = optim.RMSprop(self.vae.decoder.parameters(), lr=lr)
+        self.optimizer_dis = optim.RMSprop(self.dis.parameters(), lr=lr)
 
         # Generate directory names for experiment
         self.experiment_folder = os.path.abspath(experiment_name)
@@ -130,25 +138,32 @@ class ExperimentBuilder(nn.Module):
         # Send data to device as torch tensors
         x, y = x.float().to(device=self.device), y.long().to(device=self.device)
         # Forward data in model
-        out = self.model.forward(x)
+        recon_x, z, mu, logvar = self.vae.forward(x)
+        p_is_fake = self.dis.forward(x)
 
         # Compute loss  
         loss = VaeGanLoss(input=out, target=y)
+        loss_enc = loss.loss_encoder(self.dis, recon_x, x, mu, logvar)
+        loss_dec = loss.loss_decoder(self.dis, recon_x, x, self.dec, z)
+        loss_dis = loss.loss_discriminator(self.dis, self.dec, z, x)
 
         # Set all weight grads from previous training iters to 0
-        self.optimizer.zero_grad()
+        self.optimizer_enc.zero_grad()
+        self.optimizer_dec.zero_grad()
+        self.optimizer_dis.zero_grad()
         # Backpropagate to compute gradients for current iter loss
-        loss.backward()
+        loss_enc.backward()
+        loss_dec.backward()
+        loss_dis.backward()
 
         self.learning_rate_scheduler.step(epoch=self.current_epoch)
         # Update network parameters
-        self.optimizer.step()
+        self.optimizer_enc.step()
+        self.optimizer_dec.step()
+        self.optimizer_dis.step()
 
-        # Get argmax of predictions
-        _, predicted = torch.max(out.data, 1)
         # Compute accuracy
-        accuracy = np.mean(list(predicted.eq(y.data).cpu()))
-        return loss.cpu().data.numpy(), accuracy
+        return loss.cpu().data.numpy(), 0
 
     def run_validation_iter(self, x, y):
         """
