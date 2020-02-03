@@ -31,10 +31,11 @@ class ExperimentBuilder(nn.Module):
         :param continue_from_epoch: An int indicating whether we'll start from scrach (-1) or whether we'll reload a previously saved model of epoch 'continue_from_epoch' and continue training from there.
         """
         super(ExperimentBuilder, self).__init__()
-        wandb.init(project="mlp")
 
         self.experiment_name = experiment_name
         self.model = network_model
+        # TODO populate hyper_parameters
+        self.hyper_parameters = {}
 
         # Find GPUs and transfer computation
         if torch.cuda.device_count() > 1 and use_gpu:
@@ -54,7 +55,7 @@ class ExperimentBuilder(nn.Module):
         # Comet ML Setup
         self.experiment = Experiment(api_key="cTXulwAAXRQl33uirmViBlbK4",
                         project_name="mlp-cw3", workspace="ricofio")
-
+                        
         # Re-initialize Model Weights
         self.model.reset_parameters()
 
@@ -79,30 +80,29 @@ class ExperimentBuilder(nn.Module):
         self.experiment_logs = os.path.abspath(os.path.join(self.experiment_folder, "result_outputs"))
         self.experiment_saved_models = os.path.abspath(os.path.join(self.experiment_folder, "saved_models"))
         # Generate folders if not existing
-        if not os.path.exists(self.experiment_folder):  # If experiment directory does not exist
-            os.mkdir(self.experiment_folder)  # create the experiment directory
-            os.mkdir(self.experiment_logs)  # create the experiment log directory
-            os.mkdir(self.experiment_saved_models)  # create the experiment saved models directory
-
+        if not os.path.exists(self.experiment_folder):
+            os.mkdir(self.experiment_folder)
+            os.mkdir(self.experiment_logs)
+            os.mkdir(self.experiment_saved_models)
         
         # For early stopping
         self.best_val_model_idx = 0
         self.best_val_model_acc = 0.
-
         self.num_epochs = num_epochs
-        self.criterion = VaeGanLoss().to(self.device)  # send loss computation to GPU
+
+        # send loss computation to GPU
+        self.criterion1 = VaeGanLoss().to(self.device)
+        self.criterion2 = nn.CosineSimilarity().to(self.device)
 
         # Training starting point
         # If continue from epoch is -2 then continue from latest saved model
         if continue_from_epoch == -2:
             self.state, self.best_val_model_idx, self.best_val_model_acc = self.load_model(
-                # reload existing model from epoch and return best val model index
-                # and the best val acc of that model
                 model_save_dir=self.experiment_saved_models, model_save_name="train_model",
                 model_idx='latest')
             self.starting_epoch = int(self.state['model_epoch'])
 
-        # If continue from epoch is greater than -1 then
+        # If continue from epoch is greater than -1 then continue from existing model
         elif continue_from_epoch > -1:
             # reload existing model from epoch and return best val model index
             # and the best val acc of that model
@@ -113,6 +113,9 @@ class ExperimentBuilder(nn.Module):
         else:
             self.state = dict()
             self.starting_epoch = 0
+
+        # Log the hyperparameters
+        self.experiment.log_parameters(hyper_parameters)
 
     def get_num_parameters(self):
         total_num_params = 0
@@ -128,39 +131,79 @@ class ExperimentBuilder(nn.Module):
         :param y: The targets for the model. A numpy array of shape batch_size, num_classes
         :return: the loss and accuracy for this batch
         """
-        self.train()  # sets model to training mode (in case batch normalization or other methods have different procedures for training and evaluation)
-        x, y = x.float().to(device=self.device), y.long().to(
-            device=self.device)  # send data to device as torch tensors
-        out = self.model.forward(x)  # forward the data in the model
+        # Set model to training mode
+        self.train()
+        # Send data to device as torch tensors
+        x, y = x.float().to(device=self.device), y.long().to(device=self.device)
+        # Forward data in model
+        out = self.model.forward(x)
 
+        # Compute loss  
+        loss = VaeGanLoss(input=out, target=y)
 
-        loss = F.cross_entropy(input=out, target=y)  # compute loss
-
-        self.optimizer.zero_grad()  # set all weight grads from previous training iters to 0
-        loss.backward()  # backpropagate to compute gradients for current iter loss
+        # Set all weight grads from previous training iters to 0
+        self.optimizer.zero_grad()
+        # Backpropagate to compute gradients for current iter loss
+        loss.backward()
 
         self.learning_rate_scheduler.step(epoch=self.current_epoch)
-        self.optimizer.step()  # update network parameters
-        _, predicted = torch.max(out.data, 1)  # get argmax of predictions
-        accuracy = np.mean(list(predicted.eq(y.data).cpu()))  # compute accuracy
+        # Update network parameters
+        self.optimizer.step()
+
+        # Get argmax of predictions
+        _, predicted = torch.max(out.data, 1)
+        # Compute accuracy
+        accuracy = np.mean(list(predicted.eq(y.data).cpu()))
         return loss.cpu().data.numpy(), accuracy
 
-    def run_evaluation_iter(self, x, y):
+    def run_validation_iter(self, x, y):
         """
-        Receives the inputs and targets for the model and runs an evaluation iterations. Returns loss and accuracy metrics.
-        :param x: The inputs to the model. A numpy array of shape batch_size, channels, height, width
-        :param y: The targets for the model. A numpy array of shape batch_size, num_classes
-        :return: the loss and accuracy for this batch
+        For validation run
+        Receives the inputs and targets for the model and runs an evaluation iteration. 
+        Returns loss and accuracy metrics.
+        :param x: The inputs to the model
+        :param y: The targets for the model
+        :return:  The loss and accuracy for this batch
         """
-        self.eval()  # sets the system to validation mode
-        x, y = x.float().to(device=self.device), y.long().to(
-            device=self.device)  # convert data to pytorch tensors and send to the computation device
-        out = self.model.forward(x)  # forward the data in the model
+        # Sets the system to validation mode
+        self.eval()
+        # Convert data to pytorch tensors and send to the computation device
+        x, y = x.float().to(device=self.device), y.long().to(device=self.device)
+        # Forward the data in the model  
+        out = self.model.forward(x)
 
-        loss = F.cross_entropy(input=out, target=y)  # compute loss
+        # Compute loss
+        loss = VaeGanLoss(input=out, target=y)
 
-        _, predicted = torch.max(out.data, 1)  # get argmax of predictions
-        accuracy = np.mean(list(predicted.eq(y.data).cpu()))  # compute accuracy
+        # Get argmax of predictions
+        _, predicted = torch.max(out.data, 1)
+        # Compute accuracy
+        accuracy = np.mean(list(predicted.eq(y.data).cpu()))
+        return loss.cpu().data.numpy(), accuracy
+
+    def run_test_iter(self, x, y):
+        """
+        For validation run
+        Receives the inputs and targets for the model and runs an evaluation iteration. 
+        Returns loss and accuracy metrics.
+        :param x: The inputs to the model
+        :param y: The targets for the model
+        :return:  The loss and accuracy for this batch
+        """
+        # Sets the system to validation mode
+        self.eval()
+        # Convert data to pytorch tensors and send to the computation device
+        x, y = x.float().to(device=self.device), y.long().to(device=self.device)
+        # Forward the data in the model  
+        out = self.model.forward(x)
+
+        # Compute loss
+        loss = F.cosine_similarity(input=out, target=y)
+
+        # Get argmax of predictions
+        _, predicted = torch.max(out.data, 1)
+        # Compute accuracy
+        accuracy = np.mean(list(predicted.eq(y.data).cpu()))
         return loss.cpu().data.numpy(), accuracy
 
     def save_model(self, model_save_dir, model_save_name, model_idx, best_validation_model_idx,
@@ -175,15 +218,21 @@ class ExperimentBuilder(nn.Module):
         :param state: The dictionary containing the system state.
 
         """
-        self.state['network'] = self.state_dict()  # save network parameter and other variables.
-        self.state['best_val_model_idx'] = best_validation_model_idx  # save current best val idx
-        self.state['best_val_model_acc'] = best_validation_model_acc  # save current best val acc
-        torch.save(self.state, f=os.path.join(model_save_dir, "{}_{}".format(model_save_name, str(
-            model_idx))))  # save state at prespecified filepath
+        # Save network parameter and other variables.
+        self.state['network'] = self.state_dict()
+        # Save current best val idx
+        self.state['best_val_model_idx'] = best_validation_model_idx
+        # Save current best val acc
+        self.state['best_val_model_acc'] = best_validation_model_acc
+        # Save state at prespecified filepath
+        torch.save(self.state, f=os.path.join(model_save_dir, 
+                                    "{}_{}".format(model_save_name, 
+                                    str(model_idx))))
 
     def load_model(self, model_save_dir, model_save_name, model_idx):
         """
-        Load the network parameter state and the best val model idx and best val acc to be compared with the future val accuracies, in order to choose the best val model
+        Load the network parameter state and the best val model idx and best val acc 
+        to be compared with the future val accuracies, in order to choose the best val model
         :param model_save_dir: The directory to store the state at.
         :param model_save_name: Name to use to save model without the epoch index
         :param model_idx: The index to save the model with.
@@ -200,87 +249,93 @@ class ExperimentBuilder(nn.Module):
         """
         self.experiment.log_parameters(self.model.__dict__)
         wandb.watch(self, log="all")
-        total_losses = {"train_acc": [], "train_loss": [], "val_acc": [],
-                        "val_loss": []}  # initialize a dict to keep the per-epoch metrics
+        total_losses = {"train_acc": [], "train_loss": [], "val_acc": [], "val_loss": []}
+
+        # Start experiment
         with self.experiment.train():
             for i, epoch_idx in enumerate(range(self.starting_epoch, self.num_epochs)):
                 epoch_start_time = time.time()
                 current_epoch_losses = {"train_acc": [], "train_loss": [], "val_acc": [], "val_loss": []}
                 self.current_epoch = epoch_idx
-                # training
-                with tqdm.tqdm(total=len(self.train_data)) as pbar_train:  # create a progress bar for training
-                    for idx, (x, y) in enumerate(self.train_data):  # get data batches
-                        loss, accuracy = self.run_train_iter(x=x, y=y)  # take a training iter step
-                        current_epoch_losses["train_loss"].append(loss)  # add current iter loss to the train loss list
-                        current_epoch_losses["train_acc"].append(accuracy)  # add current iter acc to the train acc list
+
+                # Training
+                with tqdm.tqdm(total=len(self.train_data)) as pbar_train:
+                    # For each data batch
+                    for idx, (x, y) in enumerate(self.train_data):
+                        loss, accuracy = self.run_train_iter(x=x, y=y)
+                        current_epoch_losses["train_loss"].append(loss)
+                        current_epoch_losses["train_acc"].append(accuracy)
                         pbar_train.update(1)
                         pbar_train.set_description("loss: {:.4f}, accuracy: {:.4f}".format(loss, accuracy))
 
-                # validation
-                with tqdm.tqdm(total=len(self.val_data)) as pbar_val:  # create a progress bar for validation
-                    for x, y in self.val_data:  # get data batches
-                        loss, accuracy = self.run_evaluation_iter(x=x, y=y)  # run a validation iter
-                        current_epoch_losses["val_loss"].append(loss)  # add current iter loss to val loss list.
-                        current_epoch_losses["val_acc"].append(accuracy)  # add current iter acc to val acc lst.
-                        pbar_val.update(1)  # add 1 step to the progress bar
+                # Validation
+                with tqdm.tqdm(total=len(self.val_data)) as pbar_val:
+                    # For each validation batch
+                    for x, y in self.val_data:
+                        loss, accuracy = self.run_validation_iter(x=x, y=y)
+                        current_epoch_losses["val_loss"].append(loss)
+                        current_epoch_losses["val_acc"].append(accuracy)
+                        pbar_val.update(1)
                         pbar_val.set_description("loss: {:.4f}, accuracy: {:.4f}".format(loss, accuracy))
+                
                 val_mean_accuracy = np.mean(current_epoch_losses['val_acc'])
-                if val_mean_accuracy > self.best_val_model_acc:  # if current epoch's mean val acc is greater than the saved best val acc then
-                    self.best_val_model_acc = val_mean_accuracy  # set the best val model acc to be current epoch's val accuracy
-                    self.best_val_model_idx = epoch_idx  # set the experiment-wise best val idx to be the current epoch's idx
 
+                # For early stopping
+                if val_mean_accuracy > self.best_val_model_acc:
+                    self.best_val_model_acc = val_mean_accuracy
+                    self.best_val_model_idx = epoch_idx
+
+                # Get mean of all metrics of current epoch metrics dict, 
+                # to get them ready for storage and output on the terminal.
                 for key, value in current_epoch_losses.items():
-                    total_losses[key].append(np.mean(
-                        value))  # get mean of all metrics of current epoch metrics dict, to get them ready for storage and output on the terminal.
+                    total_losses[key].append(np.mean(value))
                     self.experiment.log_metric(key, np.mean(value), step=epoch_idx)
-                wandb.log(current_epoch_losses)
+
+                # Save statistics to stats file
                 save_statistics(experiment_log_dir=self.experiment_logs, filename='summary.csv',
                                 stats_dict=total_losses, current_epoch=i,
-                                continue_from_mode=True if (self.starting_epoch != 0 or i > 0) else False)  # save statistics to stats file.
+                                continue_from_mode=True if (self.starting_epoch != 0 or i > 0) else False)
 
-                # load_statistics(experiment_log_dir=self.experiment_logs, filename='summary.csv') # How to load a csv file if you need to
-
-                out_string = "_".join(
-                    ["{}_{:.4f}".format(key, np.mean(value)) for key, value in current_epoch_losses.items()])
-                # create a string to use to report our epoch metrics
-                epoch_elapsed_time = time.time() - epoch_start_time  # calculate time taken for epoch
+                out_string = "_".join(["{}_{:.4f}".format(key, np.mean(value)) for key, value in current_epoch_losses.items()])
+                
+                # Report epoch metrics
+                epoch_elapsed_time = time.time() - epoch_start_time
                 epoch_elapsed_time = "{:.4f}".format(epoch_elapsed_time)
                 print("Epoch {}:".format(epoch_idx), out_string, "epoch time", epoch_elapsed_time, "seconds")
+
                 self.state['model_epoch'] = epoch_idx
-                self.save_model(model_save_dir=self.experiment_saved_models,
-                                # save model and best val idx and best val acc, using the model dir, model name and model idx
-                                model_save_name="train_model", model_idx=epoch_idx,
-                                best_validation_model_idx=self.best_val_model_idx,
-                                best_validation_model_acc=self.best_val_model_acc)
-                self.save_model(model_save_dir=self.experiment_saved_models,
-                                # save model and best val idx and best val acc, using the model dir, model name and model idx
-                                model_save_name="train_model", model_idx='latest',
-                                best_validation_model_idx=self.best_val_model_idx,
-                                best_validation_model_acc=self.best_val_model_acc)
 
+                def quick_save(idx):
+                    self.save_model(model_save_dir=self.experiment_saved_models,
+                                    model_save_name="train_model", model_idx=idx,
+                                    best_validation_model_idx=self.best_val_model_idx,
+                                    best_validation_model_acc=self.best_val_model_acc)
+
+                quick_save(epoch_idx)
+                quick_save('latest')
+
+        # Testing
         print("Generating test set evaluation metrics")
-        self.load_model(model_save_dir=self.experiment_saved_models, model_idx=self.best_val_model_idx,
-                        # load best validation model
+        self.load_model(model_save_dir=self.experiment_saved_models, 
+                        model_idx=self.best_val_model_idx,
                         model_save_name="train_model")
-        current_epoch_losses = {"test_acc": [], "test_loss": []}  # initialize a statistics dict
-        with self.experiment.test():
-            with tqdm.tqdm(total=len(self.test_data)) as pbar_test:  # ini a progress bar
-                for x, y in self.test_data:  # sample batch
-                    loss, accuracy = self.run_evaluation_iter(x=x,
-                                                              y=y)  # compute loss and accuracy by running an evaluation step
-                    current_epoch_losses["test_loss"].append(loss)  # save test loss
-                    current_epoch_losses["test_acc"].append(accuracy)  # save test accuracy
-                    pbar_test.update(1)  # update progress bar status
-                    pbar_test.set_description(
-                        "loss: {:.4f}, accuracy: {:.4f}".format(loss, accuracy))  # update progress bar string output
 
-            test_losses = {key: [np.mean(value)] for key, value in
-                           current_epoch_losses.items()}  # save test set metrics in dict format
-            for key, value in current_epoch_losses.items():
+        current_test_losses = {"test_acc": [], "test_loss": []}
+        with self.experiment.test():
+            with tqdm.tqdm(total=len(self.test_data)) as pbar_test:
+                for x, y in self.test_data:
+                    # Compute loss and accuracy by running an evaluation step
+                    loss, accuracy = self.run_validation_iter(x=x, y=y)
+                    current_test_losses["test_loss"].append(loss)
+                    current_test_losses["test_acc"].append(accuracy)
+                    pbar_test.update(1)
+                    pbar_test.set_description( "loss: {:.4f}, accuracy: {:.4f}".format(loss, accuracy))
+
+            test_losses = {key: [np.mean(value)] for key, value in current_test_losses.items()}
+            for key, value in current_test_losses.items():
                 self.experiment.log_metric(key, value)
+
             save_statistics(experiment_log_dir=self.experiment_logs, filename='test_summary.csv',
-                            # save test set metrics on disk in .csv format
                             stats_dict=test_losses, current_epoch=0, continue_from_mode=False)
-            wandb.log(test_losses)
-            torch.save(self.state_dict(), os.path.join(wandb.run.dir, 'model.pt'))
+
         return total_losses, test_losses
