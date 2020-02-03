@@ -23,3 +23,6 @@ class Discriminator(nn.Module):
 		x = x.view(x.size(0), -1)
 		validity = self.model(x)
 		return validity
+
+	def forward(self,x):
+		

@@ -3,13 +3,13 @@ import torch
 from torch.nn import functional as F
 from torch.nn.modules.loss import _Loss
 
-# class VaeGanLoss(_Loss):
-#     def __init__(self, size_average=None, reduce=None, reduction='mean'):
-#         super(VaeGanLoss, self).__init__(size_average, reduce, reduction)
+class VaeGanLoss(_Loss):
+    def __init__(self, size_average=None, reduce=None, reduction='mean'):
+        super(VaeGanLoss, self).__init__(size_average, reduce, reduction)
 
-#     def forward(self, input, target):
-#         #TODO implement the loss
-#         raise NotImplementedError
+    def forward(self, discriminator, decoder, z, recon_x, x, mu, logvar):
+        
+        return vae_gan_loss(discriminator, decoder, z, recon_x, x, mu, logvar)
 
 
 def loss_llikelihood(discriminator, recon_x, x):
