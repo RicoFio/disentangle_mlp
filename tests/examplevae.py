@@ -6,6 +6,7 @@ from torch import nn, optim
 from torch.nn import functional as F
 from torchvision import datasets, transforms
 from torchvision.utils import save_image
+from torch.autograd import Variable
 import sys
 
 
@@ -14,20 +15,34 @@ parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='input batch size for training (default: 128)')
 parser.add_argument('--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 10)')
-parser.add_argument('--no-cuda', action='store_true', default=False,
-                    help='enables CUDA training')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
 args = parser.parse_args()
-args.cuda = not args.no_cuda and torch.cuda.is_available()
 
 torch.manual_seed(args.seed)
 
-device = torch.device("cuda" if args.cuda else "cpu")
+# Load Device
+if torch.cuda.device_count() > 1 and use_gpu:
+    device = torch.cuda.current_device()
+    enc.to(device)
+    enc = nn.DataParallel(module=enc)
+    dec.to(device)
+    dec = nn.DataParallel(module=dec)
+    dis.to(device)
+    dis = nn.DataParallel(module=dis)
+    kwargs = {'num_workers': 1, 'pin_memory': True}
+elif torch.cuda.device_count() == 1 and use_gpu:
+    device =  torch.cuda.current_device()
+    enc.to(device)
+    dec.to(device)
+    dis.to(device)
+    kwargs = {'num_workers': 1, 'pin_memory': True}
+else:
+    device = torch.device('cpu')
+    kwargs = {}
 
-kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
 train_loader = torch.utils.data.DataLoader(
     datasets.MNIST('../data', train=True, download=True,
                    transform=transforms.ToTensor()),
@@ -37,89 +52,131 @@ test_loader = torch.utils.data.DataLoader(
     batch_size=args.batch_size, shuffle=True, **kwargs)
 
 
-# class Discriminator(nn.Module):
-#     def __init__(self):
-#         super(Discriminator, self).__init__()
-
-#         layers = []
+class Discriminator(nn.Module):
+    def __init__(self, input_channels, representation_size=(256, 8, 8)):  
+        super(Discriminator, self).__init__()
+        self.representation_size = representation_size
+        dim = representation_size[0] * representation_size[1] * representation_size[2]
         
-#         layers.append(nn.Linear(in_features=28*28, out_features=512, bias=True))
-#         layers.append(nn.LeakyReLU(0.2, inplace=True))
+        self.main = nn.Sequential(
+            nn.Conv2d(input_channels, 32, 5, stride=1, padding=2),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(32, 128, 5, stride=2, padding=2),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(128, 256, 5, stride=2, padding=2),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(256, 256, 5, stride=2, padding=2),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2))
         
-#         layers.append(nn.Linear(in_features=512, out_features=256, bias=True))
-#         layers.append(nn.LeakyReLU(0.2, inplace=True))
+        self.lth_features = nn.Sequential(
+            nn.Linear(dim, 2048),
+            nn.LeakyReLU(0.2))
         
-#         layers.append(nn.Linear(in_features=256, out_features=1, bias=True))
-#         layers.append(nn.Sigmoid())
+        self.sigmoid_output = nn.Sequential(
+            nn.Linear(2048, 1),
+            nn.Sigmoid())
+        
+    def forward(self, x):
+        '''Return lth feature and validity of fake'''
+        batch_size = x.size()[0]
+        features = self.main(x)
+        lth_rep = self.lth_features(features.view(batch_size, -1))
+        output = self.sigmoid_output(lth_rep)
+        return lth_rep, output
 
-#         self.model = nn.Sequential(*layers)
+class Encoder(nn.Module):
+    def __init__(self):
+        super(Encoder, self).__init__()
 
-#     def forward(self, x):
-#         x = x.view(x.size(0), -1)
-#         validity = self.model(x)
-#         return validity
+        self.features = nn.Sequential(
+            # nc x 64 x 64
+            nn.Conv2d(self.input_channels, representation_size, 5, stride=2, padding=2),
+            nn.BatchNorm2d(representation_size),
+            nn.ReLU(),
+            # hidden_size x 32 x 32
+            nn.Conv2d(representation_size, representation_size*2, 5, stride=2, padding=2),
+            nn.BatchNorm2d(representation_size * 2),
+            nn.ReLU(),
+            # hidden_size*2 x 16 x 16
+            nn.Conv2d(representation_size*2, representation_size*4, 5, stride=2, padding=2),
+            nn.BatchNorm2d(representation_size * 4),
+            nn.ReLU())
+            # hidden_size*4 x 8 x 8
 
-#     def forward_l(self, x, l):
+        self.mean = nn.Sequential(
+            nn.Linear(representation_size*4*8*8, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, output_channels))
+        
+        self.logvar = nn.Sequential(
+            nn.Linear(representation_size*4*8*8, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, output_channels))
 
-#         x = x.view(x.size(0), -1)
-#         a = self.model[0](x)
-#         b = self.model[1](a)
-#         c = self.model[2](b)
-#         d = self.model[3](c)
-#         return d
+    def forward(self, x):
+        batch_size = x.size()[0]
+        hidden_representation = self.features(x)
+        mean = self.mean(hidden_representation.view(batch_size, -1))
+        logvar = self.logvar(hidden_representation.view(batch_size, -1))
+        return mean, logvar
 
 
-# class VAE(nn.Module):
-#     def __init__(self):
-#         super(VAE, self).__init__()
+class Decoder(nn.Module):
+    def __init__(self, input_size, representation_size):
+        super(Decoder, self).__init__()
+        self.input_size = input_size
+        self.representation_size = representation_size
+        dim = representation_size[0] * representation_size[1] * representation_size[2]
+        
+        self.preprocess = nn.Sequential(
+            nn.Linear(input_size, dim),
+            nn.BatchNorm1d(dim),
+            nn.ReLU())
+        
+        self.decode = nn.Sequential(
+            # 256 x 8 x 8
+            nn.ConvTranspose2d(representation_size[0], 256, 5, stride=2, padding=2),
+            nn.BatchNorm2d(256), 
+            nn.ReLU(),
+            # 256 x 16 x 16
+            nn.ConvTranspose2d(256, 128, 5, stride=2, padding=2),
+            nn.BatchNorm2d(128), 
+            nn.ReLU(),
+            # 128 x 32 x 32
+            nn.ConvTranspose2d(128, 32, 5, stride=2, padding=2),
+            nn.BatchNorm2d(32), 
+            nn.ReLU(),
+            # 32 x 64 x 64
+            nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2),
+            # 3 x 64 x 64
+            nn.Tanh())
+            
+    def reparametrize(self, x, mean, logvar):
+        batch_size = x.size()[0]
+        std = logvar.mul(0.5).exp_()
+        
+        reparametrized_noise = torch.randn((batch_size, self.hidden_size))
 
-#         self.fc1 = nn.Linear(784, 400)
-#         self.fc21 = nn.Linear(400, 20)
-#         self.fc22 = nn.Linear(400, 20)
-#         self.fc3 = nn.Linear(20, 400)
-#         self.fc4 = nn.Linear(400, 784)
+        reparametrized_noise = mean + std * reparametrized_noise
 
-#     def encode(self, x):
-#         h1 = F.relu(self.fc1(x))
-#         return self.fc21(h1), self.fc22(h1)
+        rec_images = self.decoder(reparametrized_noise)
+        
+        return mean, logvar, rec_images
 
-#     def reparameterize(self, mu, logvar):
-#         std = torch.exp(0.5*logvar)
-#         eps = torch.randn_like(std)
-#         return mu + eps*std
-
-#     def decode(self, z):
-#         h3 = F.relu(self.fc3(z))
-#         return torch.sigmoid(self.fc4(h3))
-
-#     def forward(self, x):
-#         mu, logvar = self.encode(x.view(-1, 784))
-#         z = self.reparameterize(mu, logvar)
-#         return self.decode(z), mu, logvar, z
-
-# class Encoder(nn.Module):
-#     def __init__(self):
-#         super(Encoder, self).__init__()
-
-#         self.fc1 = nn.Linear(784, 400)
-#         self.fc21 = nn.Linear(400, 20)
-#         self.fc22 = nn.Linear(400, 20)
-
-#     def encode(self, x):
-#         h1 = F.relu(self.fc1(x))
-#         return self.fc21(h1), self.fc22(h1)
-
-#     def reparameterize(self, mu, logvar):
-#         std = torch.exp(0.5*logvar)
-#         eps = torch.randn_like(std)
-#         #TODO Check this formula
-#         kld = (-0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1))
-#         return mu + eps*std, kld
-
-#     def forward(self, x):
-#         mu, logvar = self.encode(x.view(-1, 784))
-#         z, kld = self.reparameterize(mu, logvar)
-#         return z, mu, logvar, kld
+    def forward(self, code):
+        reparametrized_noise = self.reparametrize(code)
+        preprocessed_codes = self.preprocess(reparametrized_noise)
+        preprocessed_codes = preprocessed_codes.view(-1,
+                                                     self.representation_size[0],
+                                                     self.representation_size[1],
+                                                     self.representation_size[2])
+        return self.decode(preprocessed_codes)
 
 
 
