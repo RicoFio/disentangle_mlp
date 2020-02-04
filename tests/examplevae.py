@@ -1,4 +1,5 @@
-from __future__ import print_function
+from comet_ml import Experiment
+
 import argparse
 import torch
 import torch.utils.data
@@ -7,20 +8,31 @@ from torch.nn import functional as F
 from torchvision import datasets, transforms
 from torchvision.utils import save_image
 from torch.autograd import Variable
+
+from tqdm import tqdm
+
+import os
 import sys
 
-
+# Parse command line argumetns
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
-                    help='input batch size for training (default: 128)')
+                    help='input batch size for training (default: 64)')
+parser.add_argument('--channel-nr', type=int, default=1, metavar='N',
+                    help='input number of channel for data (default: 1)')
+parser.add_argument('--representation-size', type=int, default=28, metavar='N',
+                    help='input pixel size of data elements (default: 28)')
 parser.add_argument('--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--seed', type=int, default=1, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
+parser.add_argument('--lr', type=float, default=3e-4, metavar='L',
+                    help='learning rate')
 args = parser.parse_args()
 
+# Set seed
 torch.manual_seed(args.seed)
 
 # Load Device
@@ -43,15 +55,33 @@ else:
     device = torch.device('cpu')
     kwargs = {}
 
+# Load Data - MNIST
 train_loader = torch.utils.data.DataLoader(
     datasets.MNIST('../data', train=True, download=True,
-                   transform=transforms.ToTensor()),
-    batch_size=args.batch_size, shuffle=True, **kwargs)
+                    transform=transforms.ToTensor()),
+                    batch_size=args.batch_size, shuffle=True, **kwargs)
 test_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('../data', train=False, transform=transforms.ToTensor()),
-    batch_size=args.batch_size, shuffle=True, **kwargs)
+    datasets.MNIST('../data', train=False, download=False,
+                    transform=transforms.ToTensor()),
+                    batch_size=args.batch_size, shuffle=True, **kwargs)
+# Load Data - EMNIST
+# print("Downloading Dataset")
+# train_loader = DataLoader(
+#     datasets.EMNIST('../data/gzip', train=True, download=True, split="balanced",
+#                     transform=transforms.ToTensor()),
+#                     batch_size=100, shuffle=True)
+# test_loader = DataLoader(
+#     datasets.EMNIST('../data/gzip', train=False, download=True, split="balanced",
+#                     transform=transforms.ToTensor()),
+#                     batch_size=100, shuffle=True)
 
+# Set up experiment
+experiment = Experiment(api_key="cTXulwAAXRQl33uirmViBlbK4",
+                        project_name="mlp-cw3", workspace="ricofio")
 
+######################################
+#### Class Definitions
+######################################
 class Discriminator(nn.Module):
     def __init__(self, input_channels, representation_size=(256, 8, 8)):  
         super(Discriminator, self).__init__()
@@ -88,8 +118,9 @@ class Discriminator(nn.Module):
         output = self.sigmoid_output(lth_rep)
         return lth_rep, output
 
+
 class Encoder(nn.Module):
-    def __init__(self):
+    def __init__(self, input_channels, output_channels, representation_size = 64):
         super(Encoder, self).__init__()
 
         self.features = nn.Sequential(
@@ -177,16 +208,27 @@ class Decoder(nn.Module):
                                                      self.representation_size[1],
                                                      self.representation_size[2])
         return self.decode(preprocessed_codes)
+######################################
 
+# Define Models
+#TODO Add weight_init
+encoder = Encoder()
+encoder.to_device(device)
 
+decoder = Decoder()
+decoder.to_device(device)
 
-model = VAE().to(device)
 discriminator = Discriminator()
-optimizer_enc = optim.Adam(params= list(model.fc1.parameters()) + list(model.fc21.parameters()) + list(model.fc22.parameters()) , lr=1e-3)
-optimizer_dec = optim.Adam(params= list(model.fc3.parameters()) + list(model.fc4.parameters()) , lr=1e-3)
-optimizer_dis = optim.Adam(params= discriminator.parameters(), lr=1e-3)
+discriminator.to_device(device)
 
+# Optimizers
+optimizer_enc = optim.RMSprop(enc.parameters(), lr=lr)
+optimizer_dec = optim.RMSprop(dec.parameters(), lr=lr)
+optimizer_dis = optim.RMSprop(dis.parameters(), lr=lr)
 
+######################################
+#### Loss Helpers Definitions
+######################################
 def loss_llikelihood(discriminator, recon_x, x):
 
     res = F.mse_loss( discriminator.forward_l(recon_x, l=1) , discriminator.forward_l(x, l=1) , reduction= 'sum')
@@ -215,53 +257,59 @@ def loss_encoder(discriminator, recon_x, x, mu, logvar):
 def loss_decoder(discriminator, recon_x, x, vae, z, gamma=0.5):
 
     return gamma * loss_llikelihood(discriminator, recon_x, x) - loss_discriminator(discriminator, vae, z, x)
+######################################
 
 def train(epoch):
 
-    model.train()
-    # discriminator.train()
+    # Set models into train mode
+    encoder.train()
+    decoder.train()
+    discriminator.train()
 
     train_loss_dec = 0
-    for batch_idx, (data, _) in enumerate(train_loader):
+    train_loss_enc = 0
+    train_loss_dis = 0
 
-        data = data.to(device)
+    with experiment.train():
+        for batch_idx, (data, _) in tqdm(enumerate(train_loader)):
 
-        # order 
+            data = data.to(device)
 
-        # encoder 
-        optimizer_enc.zero_grad()
+            # encoder
+            # TODO Adapt to neew classes 
+            optimizer_enc.zero_grad()
+            recon_batch, mu, logvar, z = model(data)
 
-        # forward pass
-        recon_batch, mu, logvar, z = model(data)
+            loss_enc = torch.mean(loss_encoder(discriminator, recon_batch, data, mu, logvar))
+            loss_enc.backward(retain_graph=True)
+            optimizer_enc.step()
 
-        loss_enc = torch.mean(loss_encoder(discriminator, recon_batch, data, mu, logvar))
-        loss_enc.backward(requires=)
-        optimizer_enc.step()
+            # decoder 
+            # TODO Adapt to neew classes 
+            optimizer_dec.zero_grad()
+            loss_dec = torch.mean(loss_decoder(discriminator, recon_batch, data, model, z, gamma=0.01))
+            loss_dec.backward(retain_graph=True)
+            optimizer_dec.step()
 
-        # decoder 
-        optimizer_dec.zero_grad()
-        loss_dec = torch.mean(loss_decoder(discriminator, recon_batch, data, model, z, gamma=0.01))
-        loss_dec.backward()
-        optimizer_dec.step()
+            # discriminator
+            # TODO Adapt to neew classes 
+            optimizer_dis.zero_grad()
+            loss_dis = torch.mean(loss_discriminator(discriminator, model, z, recon_batch))
+            loss_dis.backward()
+            optimizer_dis.step()
 
-        # discriminator
-        optimizer_dis.zero_grad()
-        loss_dis = torch.mean(loss_discriminator(discriminator, model, z, recon_batch))
-        loss_dis.backward()
-        optimizer_dis.step()
+            # Summed error over epoch
+            train_loss_dec += loss_dec.item()
+            train_loss_enc += loss_enc.item()
+            train_loss_dis += loss_dis.item()
 
-
-        train_loss_dec += loss_dec.item()
-        train_loss_enc += loss_enc.item()
-        train_loss_dis += loss_dis.item()
-
-        if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss dec: {:.6f} \t  Loss enc: {:.6f} \t Loss dis: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader),
-                loss_dec.item() / len(data), 
-                loss_enc.item() / len(data),
-                loss_dis.item() / len(data),))
+            if batch_idx % args.log_interval == 0:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss dec: {:.6f} \t  Loss enc: {:.6f} \t Loss dis: {:.6f}'.format(
+                    epoch, batch_idx * len(data), len(train_loader.dataset),
+                    100. * batch_idx / len(train_loader),
+                    loss_dec.item() / len(data), 
+                    loss_enc.item() / len(data),
+                    loss_dis.item() / len(data),))
 
     print('====> Epoch: {} Average decoder loss: {:.4f}'.format(
           epoch, train_loss_dec / len(train_loader.dataset)))
@@ -286,11 +334,11 @@ def train(epoch):
 #     print('====> Test set loss: {:.4f}'.format(test_loss))
 
 if __name__ == "__main__":
-    for epoch in range(1, args.epochs + 1):
+    for epoch in tqdm(range(1, args.epochs + 1)):
         train(epoch)
         # test(epoch)
         with torch.no_grad():
-            sample = torch.randn(64, 20).to(device)
+            sample = torch.randn(args.batch_size, 20).to(device)
             sample = model.decode(sample).cpu()
-            save_image(sample.view(64, 1, 28, 28),
+            save_image(sample.view(args.batch_size, 1, args.representation_size, args.representation_size),
                        'results/sample_' + str(epoch) + '.png')
