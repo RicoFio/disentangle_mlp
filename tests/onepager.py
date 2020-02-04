@@ -17,9 +17,20 @@ class Encoder(nn.Module):
     def __init__(self):
         super(Encoder, self).__init__()
 
-        self.fc1 = nn.Linear(784, 400)
-        self.fc21 = nn.Linear(400, 20)
-        self.fc22 = nn.Linear(400, 20)
+        self.features = nn.Sequential(
+        # nc x 64 x 64
+        nn.Conv2d(self.input_channels, representation_size, 5, stride=2, padding=2),
+        nn.BatchNorm2d(representation_size),
+        nn.ReLU(),
+        # hidden_size x 32 x 32
+        nn.Conv2d(representation_size, representation_size*2, 5, stride=2, padding=2),
+        nn.BatchNorm2d(representation_size * 2),
+        nn.ReLU(),
+        # hidden_size*2 x 16 x 16
+        nn.Conv2d(representation_size*2, representation_size*4, 5, stride=2, padding=2),
+        nn.BatchNorm2d(representation_size * 4),
+        nn.ReLU())
+        # hidden_size*4 x 8 x 8
 
     def encode(self, x):
         h1 = F.relu(self.fc1(x))
@@ -33,6 +44,7 @@ class Encoder(nn.Module):
         return mu + eps*std, kld
 
     def forward(self, x):
+
         mu, logvar = self.encode(x.view(-1, 784))
         z, kld = self.reparameterize(mu, logvar)
         return z, mu, logvar, kld
@@ -47,7 +59,6 @@ class Decoder(nn.Module):
     def forward(self, z):
         h3 = F.relu(self.fc3(z))
         return torch.sigmoid(self.fc4(h3))
-
 
 class Discriminator(nn.Module):
     def __init__(self):

@@ -24,5 +24,6 @@ class Discriminator(nn.Module):
 		validity = self.model(x)
 		return validity
 
-	def forward(self,x):
+	def forward_l(self,x,l):
+		raise NotImplementedError()
 		
