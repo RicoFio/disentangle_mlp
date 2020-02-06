@@ -120,7 +120,7 @@ class Discriminator(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, input_channels, output_channels, representation_size = 64):
+    def __init__(self, input_channels=1, output_channels=1, representation_size = 64):
         super(Encoder, self).__init__()
 
         self.features = nn.Sequential(
@@ -151,14 +151,29 @@ class Encoder(nn.Module):
             nn.Linear(2048, output_channels))
 
     def forward(self, x):
+
         batch_size = x.size()[0]
+
         hidden_representation = self.features(x)
-        mean = self.mean(hidden_representation.view(batch_size, -1))
+
+        mu = self.mean(hidden_representation.view(batch_size, -1))
+
         logvar = self.logvar(hidden_representation.view(batch_size, -1))
-        return mean, logvar
+        
+        # reparameterization 
+        std = torch.exp(0.5*logvar)
+
+        eps = torch.randn_like(std)
+
+        z = mu + eps*std
+
+        return z, mu, logvar
+
+
 
 
 class Decoder(nn.Module):
+
     def __init__(self, input_size, representation_size):
         super(Decoder, self).__init__()
         self.input_size = input_size
@@ -187,27 +202,25 @@ class Decoder(nn.Module):
             nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2),
             # 3 x 64 x 64
             nn.Tanh())
-            
-    def reparametrize(self, x, mean, logvar):
-        batch_size = x.size()[0]
-        std = logvar.mul(0.5).exp_()
-        
-        reparametrized_noise = torch.randn((batch_size, self.hidden_size))
-
-        reparametrized_noise = mean + std * reparametrized_noise
-
-        rec_images = self.decoder(reparametrized_noise)
-        
-        return mean, logvar, rec_images
 
     def forward(self, code):
-        reparametrized_noise = self.reparametrize(code)
-        preprocessed_codes = self.preprocess(reparametrized_noise)
+
+        bs = code.size()[0]
+        preprocessed_codes = self.preprocess(code)
         preprocessed_codes = preprocessed_codes.view(-1,
                                                      self.representation_size[0],
                                                      self.representation_size[1],
                                                      self.representation_size[2])
-        return self.decode(preprocessed_codes)
+        output = self.deconv1(preprocessed_codes, output_size=(bs, 256, 16, 16))
+        output = self.act1(output)
+        output = self.deconv2(output, output_size=(bs, 128, 32, 32))
+        output = self.act2(output)
+        output = self.deconv3(output, output_size=(bs, 32, 64, 64))
+        output = self.act3(output)
+        output = self.deconv4(output, output_size=(bs, 3, 64, 64))
+        output = self.activation(output)
+        return output
+        
 ######################################
 
 # Define Models
@@ -226,25 +239,30 @@ optimizer_enc = optim.RMSprop(enc.parameters(), lr=lr)
 optimizer_dec = optim.RMSprop(dec.parameters(), lr=lr)
 optimizer_dis = optim.RMSprop(dis.parameters(), lr=lr)
 
+# sys.exit()
+
 ######################################
 #### Loss Helpers Definitions
 ######################################
 def loss_llikelihood(discriminator, recon_x, x):
 
-    res = F.mse_loss( discriminator.forward_l(recon_x, l=1) , discriminator.forward_l(x, l=1) , reduction= 'sum')
-    # print(res)
-    # sys.exit()
+    recon_x_lth, _  = discriminator.forward(recon_x)
+
+    x_lth, _ = discriminator.forward(x)
+
+    res = F.mse_loss( recon_x_lth , x_lth , reduction= 'sum')
+
     return res
 
 def loss_prior(recon_x, x, mu, logvar):
 
     return -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-def loss_discriminator(discriminator, vae, z, x):
+def loss_discriminator(discriminator, decoder, z, x):
 
     left = torch.log(discriminator.forward(x))
 
-    right = torch.log( 1. - discriminator(vae.decode(z)) )
+    right = torch.log( 1. - discriminator(decoder(z)) )
 
     res = left + right 
 
@@ -254,9 +272,9 @@ def loss_encoder(discriminator, recon_x, x, mu, logvar):
 
     return loss_prior(recon_x, x, mu, logvar) + loss_llikelihood(discriminator, recon_x, x)
 
-def loss_decoder(discriminator, recon_x, x, vae, z, gamma=0.5):
+def loss_decoder(discriminator, recon_x, x, decoder, z, gamma=0.5):
 
-    return gamma * loss_llikelihood(discriminator, recon_x, x) - loss_discriminator(discriminator, vae, z, x)
+    return gamma * loss_llikelihood(discriminator, recon_x, x) - loss_discriminator(discriminator, decoder, z, x)
 ######################################
 
 def train(epoch):
@@ -277,24 +295,26 @@ def train(epoch):
 
             # encoder
             # TODO Adapt to neew classes 
-            optimizer_enc.zero_grad()
-            recon_batch, mu, logvar, z = model(data)
+            optimizer_enc.zero_grad()   
+
+            # encoder takes data and returns 
+            z, mu, logvar = encoder(data)
 
             loss_enc = torch.mean(loss_encoder(discriminator, recon_batch, data, mu, logvar))
             loss_enc.backward(retain_graph=True)
             optimizer_enc.step()
 
             # decoder 
-            # TODO Adapt to neew classes 
+            recon_batch = decoder(z)
+
             optimizer_dec.zero_grad()
-            loss_dec = torch.mean(loss_decoder(discriminator, recon_batch, data, model, z, gamma=0.01))
+            loss_dec = torch.mean(loss_decoder(discriminator, recon_batch, data, decoder, z, gamma=0.01))
             loss_dec.backward(retain_graph=True)
             optimizer_dec.step()
 
             # discriminator
-            # TODO Adapt to neew classes 
             optimizer_dis.zero_grad()
-            loss_dis = torch.mean(loss_discriminator(discriminator, model, z, recon_batch))
+            loss_dis = torch.mean(loss_discriminator(discriminator, decoder, z, recon_batch))
             loss_dis.backward()
             optimizer_dis.step()
 
