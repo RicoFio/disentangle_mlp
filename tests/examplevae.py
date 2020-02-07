@@ -302,8 +302,8 @@ def train(epoch):
 
             # discriminator
             optimizer_dis.zero_grad()
-            # TODO this line is prob wrong gonna have to check
-            loss_dis = torch.mean(loss_discriminator(discriminator, decoder, z, recon_batch))
+            
+            loss_dis = torch.mean(loss_discriminator(discriminator, decoder, z, data))
             loss_dis.backward()
             optimizer_dis.step()
 
