@@ -169,9 +169,6 @@ class Encoder(nn.Module):
 
         return z, mu, logvar
 
-
-
-
 class Decoder(nn.Module):
 
     def __init__(self, input_size, representation_size):
@@ -211,15 +208,8 @@ class Decoder(nn.Module):
                                                      self.representation_size[0],
                                                      self.representation_size[1],
                                                      self.representation_size[2])
-        output = self.deconv1(preprocessed_codes, output_size=(bs, 256, 16, 16))
-        output = self.act1(output)
-        output = self.deconv2(output, output_size=(bs, 128, 32, 32))
-        output = self.act2(output)
-        output = self.deconv3(output, output_size=(bs, 32, 64, 64))
-        output = self.act3(output)
-        output = self.deconv4(output, output_size=(bs, 3, 64, 64))
-        output = self.activation(output)
-        return output
+        
+        return self.decode(preprocessed_codes)
         
 ######################################
 
@@ -238,8 +228,6 @@ discriminator.to_device(device)
 optimizer_enc = optim.RMSprop(enc.parameters(), lr=lr)
 optimizer_dec = optim.RMSprop(dec.parameters(), lr=lr)
 optimizer_dis = optim.RMSprop(dis.parameters(), lr=lr)
-
-# sys.exit()
 
 ######################################
 #### Loss Helpers Definitions
@@ -262,7 +250,7 @@ def loss_discriminator(discriminator, decoder, z, x):
 
     left = torch.log(discriminator.forward(x))
 
-    right = torch.log( 1. - discriminator(decoder(z)) )
+    right = torch.log(1. - discriminator(decoder(z)))
 
     res = left + right 
 
@@ -289,12 +277,12 @@ def train(epoch):
     train_loss_dis = 0
 
     with experiment.train():
+
         for batch_idx, (data, _) in tqdm(enumerate(train_loader)):
 
             data = data.to(device)
 
             # encoder
-            # TODO Adapt to neew classes 
             optimizer_enc.zero_grad()   
 
             # encoder takes data and returns 
@@ -333,7 +321,6 @@ def train(epoch):
 
     print('====> Epoch: {} Average decoder loss: {:.4f}'.format(
           epoch, train_loss_dec / len(train_loader.dataset)))
-
 
 # def test(epoch):
 #     model.eval()
