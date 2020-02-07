@@ -57,11 +57,11 @@ else:
 
 # Load Data - MNIST
 train_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('../data', train=True, download=True,
+    datasets.MNIST('../data/mnist', train=True, download=True,
                     transform=transforms.ToTensor()),
                     batch_size=args.batch_size, shuffle=True, **kwargs)
 test_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('../data', train=False, download=False,
+    datasets.MNIST('../data/mnist', train=False, download=True,
                     transform=transforms.ToTensor()),
                     batch_size=args.batch_size, shuffle=True, **kwargs)
 # Load Data - EMNIST
@@ -248,9 +248,11 @@ def loss_prior(recon_x, x, mu, logvar):
 
 def loss_discriminator(discriminator, decoder, z, x):
 
-    left = torch.log(discriminator.forward(x))
+    _ , i = discriminator.forward(x)
+    left = torch.log(i)
 
-    right = torch.log(1. - discriminator(decoder(z)))
+    _ , j = discriminator(decoder(z))
+    right = torch.log(1. - j)
 
     res = left + right 
 
@@ -347,6 +349,6 @@ if __name__ == "__main__":
         # test(epoch)
         with torch.no_grad():
             sample = torch.randn(args.batch_size, 20).to(device)
-            sample = model.decode(sample).cpu()
+            sample = decoder.forward(sample).cpu()
             save_image(sample.view(args.batch_size, 1, args.representation_size, args.representation_size),
                        'results/sample_' + str(epoch) + '.png')
