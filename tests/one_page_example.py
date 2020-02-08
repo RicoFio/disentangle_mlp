@@ -85,6 +85,7 @@ experiment = Experiment(api_key="cTXulwAAXRQl33uirmViBlbK4",
 class Discriminator(nn.Module):
     def __init__(self, input_channels, representation_size=(256, 8, 8)):  
         super(Discriminator, self).__init__()
+        
         self.representation_size = representation_size
         dim = representation_size[0] * representation_size[1] * representation_size[2]
         
@@ -122,6 +123,10 @@ class Discriminator(nn.Module):
 class Encoder(nn.Module):
     def __init__(self, input_channels=1, output_channels=1, representation_size = 64):
         super(Encoder, self).__init__()
+
+        # input parameters
+        self.input_channels = input_channels
+        self.output_channels = output_channels
 
         self.features = nn.Sequential(
             # nc x 64 x 64
@@ -216,13 +221,13 @@ class Decoder(nn.Module):
 # Define Models
 #TODO Add weight_init
 encoder = Encoder()
-encoder.to_device(device)
+# encoder.to_device(device)
 
 decoder = Decoder()
-decoder.to_device(device)
+# decoder.to_device(device)
 
 discriminator = Discriminator()
-discriminator.to_device(device)
+# discriminator.to_device(device)
 
 # Optimizers
 optimizer_enc = optim.RMSprop(enc.parameters(), lr=lr)
