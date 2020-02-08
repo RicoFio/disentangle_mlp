@@ -57,11 +57,11 @@ else:
 
 # Load Data - MNIST
 train_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('../data/mnist', train=True, download=True,
+    datasets.EMNIST('data/gzip', train=True, download=False, split="balanced",
                     transform=transforms.ToTensor()),
                     batch_size=args.batch_size, shuffle=True, **kwargs)
 test_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('../data/mnist', train=False, download=True,
+    datasets.EMNIST('data/gzip', train=False, download=False, split="balanced",
                     transform=transforms.ToTensor()),
                     batch_size=args.batch_size, shuffle=True, **kwargs)
 # Load Data - EMNIST
@@ -83,7 +83,7 @@ experiment = Experiment(api_key="cTXulwAAXRQl33uirmViBlbK4",
 #### Class Definitions
 ######################################
 class Discriminator(nn.Module):
-    def __init__(self, input_channels, representation_size=(256, 8, 8)):  
+    def __init__(self, input_channels=1, representation_size=(256, 8, 8)):  
         super(Discriminator, self).__init__()
         self.representation_size = representation_size
         dim = representation_size[0] * representation_size[1] * representation_size[2]
@@ -120,12 +120,12 @@ class Discriminator(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, input_channels=1, output_channels=1, representation_size = 64):
+    def __init__(self, input_channels=1, output_channels=1, representation_size = 28):
         super(Encoder, self).__init__()
 
         self.features = nn.Sequential(
             # nc x 64 x 64
-            nn.Conv2d(self.input_channels, representation_size, 5, stride=2, padding=2),
+            nn.Conv2d(input_channels, representation_size, 5, stride=2, padding=2),
             nn.BatchNorm2d(representation_size),
             nn.ReLU(),
             # hidden_size x 32 x 32
@@ -171,7 +171,7 @@ class Encoder(nn.Module):
 
 class Decoder(nn.Module):
 
-    def __init__(self, input_size, representation_size):
+    def __init__(self, input_size=1, representation_size=(4,8,8)):
         super(Decoder, self).__init__()
         self.input_size = input_size
         self.representation_size = representation_size
@@ -216,18 +216,18 @@ class Decoder(nn.Module):
 # Define Models
 #TODO Add weight_init
 encoder = Encoder()
-encoder.to_device(device)
+encoder.to(device)
 
 decoder = Decoder()
-decoder.to_device(device)
+decoder.to(device)
 
 discriminator = Discriminator()
-discriminator.to_device(device)
+discriminator.to(device)
 
 # Optimizers
-optimizer_enc = optim.RMSprop(enc.parameters(), lr=lr)
-optimizer_dec = optim.RMSprop(dec.parameters(), lr=lr)
-optimizer_dis = optim.RMSprop(dis.parameters(), lr=lr)
+optimizer_enc = optim.RMSprop(encoder.parameters(), lr=args.lr)
+optimizer_dec = optim.RMSprop(decoder.parameters(), lr=args.lr)
+optimizer_dis = optim.RMSprop(discriminator.parameters(), lr=args.lr)
 
 ######################################
 #### Loss Helpers Definitions
