@@ -267,6 +267,9 @@ def train(epoch):
                 loss_dec.item() / len(data), 
                 loss_enc.item() / len(data),
                 loss_dis.item() / len(data),))
+        # Temporary early stopping
+        if batch_idx == 30:
+            break
 
     print('====> Epoch: {} Average decoder loss: {:.4f}'.format(
           epoch, train_loss_dec / len(train_loader.dataset)))
@@ -294,7 +297,7 @@ if __name__ == "__main__":
         train(epoch)
         # test(epoch)
         with torch.no_grad():
-            sample = torch.randn(args.batch_size, 20).to(device)
-            sample = decoder.forward(sample).cpu()
+            sample = torch.randn((4, 16, 2, 2)).to(device)
+            sample = decoder.forward(sample).to(device)
             save_image(sample.view(args.batch_size, 1, args.representation_size, args.representation_size),
                        'results/sample_' + str(epoch) + '.png')
