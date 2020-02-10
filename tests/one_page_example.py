@@ -297,7 +297,7 @@ if __name__ == "__main__":
         train(epoch)
         # test(epoch)
         with torch.no_grad():
-            sample = torch.randn((4, 16, 2, 2)).to(device)
+            sample = torch.randn((args.batch_size, 4, 6, 6)).to(device)
             sample = decoder.forward(sample).to(device)
             save_image(sample.view(args.batch_size, 1, args.representation_size, args.representation_size),
-                       'results/sample_' + str(epoch) + '.png')
+                    'results/sample_' + str(epoch) + '.png')
