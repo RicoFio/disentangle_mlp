@@ -25,7 +25,7 @@ parser.add_argument('--representation-size', type=int, default=28, metavar='N',
                     help='input pixel size of data elements (default: 28)')
 parser.add_argument('--epochs', type=int, default=10, metavar='N',
                     help='number of epochs to train (default: 10)')
-parser.add_argument('--seed', type=int, default=1, metavar='S',
+parser.add_argument('--seed', type=int, default=10, metavar='S',
                     help='random seed (default: 1)')
 parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                     help='how many batches to wait before logging training status')
@@ -166,6 +166,10 @@ optimizer_enc = optim.RMSprop(encoder.parameters(), lr=args.lr)
 optimizer_dec = optim.RMSprop(decoder.parameters(), lr=args.lr)
 optimizer_dis = optim.RMSprop(discriminator.parameters(), lr=args.lr)
 
+# Great Global Variables - GGVs
+ones = torch.ones((128,1)).to(device)
+zeros = torch.zeros((128,1)).to(device)
+
 ######################################
 #### Loss Helpers Definitions
 ######################################
@@ -175,7 +179,7 @@ def loss_llikelihood(discriminator, recon_x, x):
 
     x_lth, _ = discriminator.forward(x)
 
-    res = F.mse_loss( recon_x_lth , x_lth , reduction= 'sum')
+    res = F.mse_loss( recon_x_lth , x_lth , reduction= 'mean')
 
     return res
 
@@ -184,22 +188,29 @@ def loss_prior(recon_x, x, mu, logvar):
     return -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
 def loss_discriminator(discriminator, decoder, z, x):
+    _, res_1 = discriminator(x)
+    _, res_2 = discriminator(decoder(z))
 
-    _ , i = discriminator.forward(x)
-    left = torch.log(i)
+    real_loss = F.binary_cross_entropy(res_1, ones)
+    fake_loss = F.binary_cross_entropy(res_2, zeros)
 
-    _ , j = discriminator(decoder(z))
-    right = torch.log(1. - j)
+    # _ , i = discriminator.forward(x)
+    # left = torch.log(i)
 
-    res = left + right 
+    # _ , j = discriminator(decoder(z))
+    # right = torch.log(1. - j)
 
-    return res
+    # res = left + right 
+
+    # return res
+
+    return real_loss + fake_loss
 
 def loss_encoder(discriminator, recon_x, x, mu, logvar):
 
     return loss_prior(recon_x, x, mu, logvar) + loss_llikelihood(discriminator, recon_x, x)
 
-def loss_decoder(discriminator, recon_x, x, decoder, z, gamma=0.5):
+def loss_decoder(discriminator, recon_x, x, decoder, z, gamma=1):
 
     return gamma * loss_llikelihood(discriminator, recon_x, x) - loss_discriminator(discriminator, decoder, z, x)
 ######################################
