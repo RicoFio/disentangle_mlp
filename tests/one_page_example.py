@@ -82,9 +82,13 @@ class Decoder(nn.Module):
             ('convt1', nn.ConvTranspose2d(4, 16, 2, stride=2)),
             ('relu1', nn.ReLU()), 
             ('convt3', nn.ConvTranspose2d(16, 1, 2, stride=2)),
+            ('relu3', nn.ReLU()), 
             ('convt4', nn.ConvTranspose2d(1, 1, 2, stride=1)),
+            ('relu4', nn.ReLU()), 
             ('convt5', nn.ConvTranspose2d(1, 1, 2, stride=1)),
+            ('relu5', nn.ReLU()), 
             ('convt6', nn.ConvTranspose2d(1, 1, 2, stride=1)),
+            ('relu6', nn.ReLU()), 
             ('convt7', nn.ConvTranspose2d(1, 1, 2, stride=1)),
             ]))
 
@@ -218,8 +222,6 @@ def train(epoch):
 
 
     for batch_idx, (data, _) in tqdm(enumerate(train_loader)):
-        if batch_idx < 460:
-            continue
         # last batch size 96,1,28,28
         data = data.to(device)
 
