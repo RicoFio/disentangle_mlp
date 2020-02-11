@@ -240,13 +240,15 @@ def train(epoch):
 
         x_p = decoder(z_p)
 
+        reconstructed_data = decoder(z)
+
         # train disc
         ones = torch.ones((data.shape[0],1)).to(device)
         zeros = torch.zeros((data.shape[0],1)).to(device) 
         _ , res_1 = discriminator(data)
         real_loss = F.binary_cross_entropy(res_1, ones)
 
-        _ , res_2 = discriminator(decoder(z))
+        _ , res_2 = discriminator(reconstructed_data)
         fake_loss = F.binary_cross_entropy(res_2, zeros)
 
         _, res_3 = discriminator(x_p)
@@ -266,7 +268,7 @@ def train(epoch):
         #copy pasta
         x_lth, res_1 = discriminator(data)
         real_loss = F.binary_cross_entropy(res_1, ones)
-        recon_xlth, res_2 = discriminator(decoder(z))
+        recon_xlth, res_2 = discriminator(reconstructed_data)
         fake_loss = F.binary_cross_entropy(res_2, zeros)
         _, res_3 = discriminator(x_p)
         noise_loss = F.binary_cross_entropy(res_3, zeros)
@@ -290,8 +292,9 @@ def train(epoch):
         loss_encoder.backward()
         optimizer_enc.step()
 
-
-        save_image(    'results/sample_' + str(epoch) + '.png')
+        if batch_idx == 460:
+            print(reconstructed_data.shape)
+            save_image(  reconstructed_data , 'results/recon_' + str(epoch) + '.png')
 
     #         recon_batch = decoder(z)
 # 
