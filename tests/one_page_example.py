@@ -80,14 +80,19 @@ class Decoder(nn.Module):
 
         self.decoder = nn.Sequential(OrderedDict([
             ('convt1', nn.ConvTranspose2d(4, 16, 2, stride=2)),
+            ('bn1', nn.BatchNorm2d(16)),
             ('relu1', nn.ReLU()), 
             ('convt3', nn.ConvTranspose2d(16, 1, 2, stride=2)),
+            ('bn1', nn.BatchNorm2d(1)),
             ('relu3', nn.ReLU()), 
             ('convt4', nn.ConvTranspose2d(1, 1, 2, stride=1)),
+            ('bn1', nn.BatchNorm2d(1)),
             ('relu4', nn.ReLU()), 
             ('convt5', nn.ConvTranspose2d(1, 1, 2, stride=1)),
+            ('bn1', nn.BatchNorm2d(1)),
             ('relu5', nn.ReLU()), 
             ('convt6', nn.ConvTranspose2d(1, 1, 2, stride=1)),
+            ('bn1', nn.BatchNorm2d(1)),
             ('relu6', nn.ReLU()), 
             ('convt7', nn.ConvTranspose2d(1, 1, 2, stride=1)),
             ]))
