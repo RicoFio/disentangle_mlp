@@ -125,20 +125,17 @@ class Discriminator(nn.Module):
         lth_features = self.lth_features(view)
 
         return lth_features, self.validity(lth_features)
+
 # Set seed
 torch.manual_seed(args.seed)
 
 
 # Define Models
-#TODO Add weight_init
 encoder = Encoder()
-# encoder.to_device(device)
 
 decoder = Decoder()
-# decoder.to_device(device)
 
 discriminator = Discriminator()
-# discriminator.to_device(device)
 
 # Load Device
 if torch.cuda.device_count() > 1:
@@ -183,39 +180,7 @@ optimizer_dis = optim.RMSprop(discriminator.parameters(), lr=args.lr * 0.1)
 ######################################
 #### Loss Helpers Definitions
 ######################################
-# def loss_llikelihood(discriminator, recon_x, x):
-#
-#     recon_x_lth, _  = discriminator.forward(recon_x)
-#
-#     x_lth, _ = discriminator.forward(x)
-#
-#     res = F.mse_loss( recon_x_lth , x_lth , reduction= 'mean')
-#
-#     return res
-#
-# def loss_prior(recon_x, x, mu, logvar):
-#
-#     return -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-#
-# def loss_discriminator(discriminator, decoder, z, x):
-#     _, res_1 = discriminator(x)
-#     _, res_2 = discriminator(decoder(z))
-#
-#     ones = torch.ones((x.shape[0],1)).to(device)
-#     zeros = torch.zeros((x.shape[0],1)).to(device)
-#
-#     real_loss = F.binary_cross_entropy(res_1, ones)
-#     fake_loss = F.binary_cross_entropy(res_2, zeros)
-#
-#     return real_loss + fake_loss
-#
-# def loss_encoder(discriminator, recon_x, x, mu, logvar):
-#
-#     return loss_prior(recon_x, x, mu, logvar) + loss_llikelihood(discriminator, recon_x, x)
-#
-# def loss_decoder(discriminator, recon_x, x, decoder, z, gamma=1):
-#
-#     return gamma * loss_llikelihood(discriminator, recon_x, x) - loss_discriminator(discriminator, decoder, z, x)
+
 ######################################
 
 def train(epoch):
@@ -231,39 +196,37 @@ def train(epoch):
 
 
     for batch_idx, (data, _) in tqdm(enumerate(train_loader)):
-        # last batch size 96,1,28,28
-        data = data.to(device)
 
-        z, mu, logvar = encoder(data)
-
-        z_p = torch.randn_like(z)
-
-        x_p = decoder(z_p)
-
-        reconstructed_data = decoder(z)
-
-        # train disc
+        # Needed to compute discriminator loss
         ones = torch.ones((data.shape[0],1)).to(device)
         zeros = torch.zeros((data.shape[0],1)).to(device)
 
+        data = data.to(device)
+
+        # Forward pass
+        #variable names like in paper's algorithm
+        z, mu, logvar = encoder(data)
+        z_p = torch.randn_like(z)
+        x_p = decoder(z_p)
+        reconstructed_data = decoder(z)
+
+        # train disc
         _ , val_1 = discriminator(data)
         real_loss = F.binary_cross_entropy(val_1, ones)
-
         _ , val_2 = discriminator(reconstructed_data)
         fake_loss = F.binary_cross_entropy(val_2, zeros)
-
         _, val_3 = discriminator(x_p)
         noise_loss = F.binary_cross_entropy(val_3, zeros)
-
+        # Final discriminator loss
         loss_discriminator = real_loss + fake_loss + noise_loss
 
+        #Update discriminator
         optimizer_dis.zero_grad()
         loss_discriminator.backward(retain_graph=True)
         optimizer_dis.step()
 
-        #train decoder
-
-        #copy pasta
+        # train decoder
+        # ugly copy pasta
         x_lth, val_1 = discriminator(data)
         real_loss = F.binary_cross_entropy(val_1, ones)
         recon_xlth, val_2 = discriminator(reconstructed_data)
@@ -271,47 +234,31 @@ def train(epoch):
         _, val_3 = discriminator(x_p)
         noise_loss = F.binary_cross_entropy(val_3, zeros)
         loss_discriminator = real_loss + fake_loss + noise_loss
-
         loss_llike = F.mse_loss( recon_xlth , x_lth , reduction= 'mean')
-
+        # Final decoder loss
         loss_decoder = gamma * loss_llike - loss_discriminator
 
+        # Update decoder
         optimizer_dec.zero_grad()
         loss_decoder.backward(retain_graph=True)
         optimizer_dec.step()
 
-        #train encoder
+        # train encoder
         loss_prior = 1 + logvar - mu.pow(2) - logvar.exp()
         loss_prior = (-0.5 * torch.sum(loss_prior))/torch.numel(mu.data)
-
+        # Final encoder loss
         loss_encoder = loss_prior + beta * loss_llike
 
+        # Update encoder
         optimizer_enc.zero_grad()
         loss_encoder.backward()
         optimizer_enc.step()
 
+        #Save some reconstructed images
         if batch_idx % 5 == 0:
             print(reconstructed_data.shape)
-            save_image(  reconstructed_data , 'results/recon_' + str(epoch) + str(batch_idx)  + '.png')
+            save_image(reconstructed_data , 'results/recon_' + str(epoch) + str(batch_idx)  + '.png')
 
-    #         recon_batch = decoder(z)
-# 
-#         loss_enc = torch.mean(loss_encoder(discriminator, recon_batch, data, mu, logvar))
-#         loss_enc.backward(retain_graph=True)
-#         optimizer_enc.step()
-# 
-#             # decoder 
-#         optimizer_dec.zero_grad()
-#         loss_dec = torch.mean(loss_decoder(discriminator, recon_batch, data, decoder, z, gamma=0.01))
-#         loss_dec.backward(retain_graph=True)
-#         optimizer_dec.step()
-# 
-#             # discriminator
-#         optimizer_dis.zero_grad()
-#             
-#         loss_dis = torch.mean(loss_discriminator(discriminator, decoder, z, data))
-#         loss_dis.backward()
-#         optimizer_dis.step()
 
             # Summed error over epoch
         train_loss_dec += loss_decoder.item()
