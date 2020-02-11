@@ -218,6 +218,8 @@ def train(epoch):
 
 
     for batch_idx, (data, _) in tqdm(enumerate(train_loader)):
+        if batch_idx < 460:
+            continue
         # last batch size 96,1,28,28
         data = data.to(device)
 
@@ -228,6 +230,8 @@ def train(epoch):
         x_p = decoder(z_p)
 
         # train disc
+        ones = torch.ones((data.shape[0],1)).to(device)
+        zeros = torch.zeros((data.shape[0],1)).to(device) 
         _ , res_1 = discriminator(data)
         real_loss = F.binary_cross_entropy(res_1, ones)
 
@@ -297,17 +301,17 @@ def train(epoch):
 #         optimizer_dis.step()
 
             # Summed error over epoch
-        train_loss_dec += loss_dec.item()
-        train_loss_enc += loss_enc.item()
-        train_loss_dis += loss_dis.item()
+        train_loss_dec += loss_decoder.item()
+        train_loss_enc += loss_encoder.item()
+        train_loss_dis += loss_discriminator.item()
 
         if batch_idx % args.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss dec: {:.6f} \t  Loss enc: {:.6f} \t Loss dis: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader),
-                loss_dec.item() / len(data), 
-                loss_enc.item() / len(data),
-                loss_dis.item() / len(data),))
+                loss_decoder.item() / len(data), 
+                loss_encoder.item() / len(data),
+                loss_discriminator.item() / len(data),))
 
     print('====> Epoch: {} Average decoder loss: {:.4f}'.format(
           epoch, train_loss_dec / len(train_loader.dataset)))
