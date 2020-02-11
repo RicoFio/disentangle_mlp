@@ -170,11 +170,15 @@ test_loader = torch.utils.data.DataLoader(
         batch_size=args.batch_size, shuffle=True, **kwargs)
 
 
+alpha = 0.1
 
+beta = 5.
+
+gamma = 15.
 # Optimizers
 optimizer_enc = optim.RMSprop(encoder.parameters(), lr=args.lr)
 optimizer_dec = optim.RMSprop(decoder.parameters(), lr=args.lr)
-optimizer_dis = optim.RMSprop(discriminator.parameters(), lr=args.lr)
+optimizer_dis = optim.RMSprop(discriminator.parameters(), lr=args.lr * 0.1)
 
 ######################################
 #### Loss Helpers Definitions
@@ -264,13 +268,13 @@ def train(epoch):
         real_loss = F.binary_cross_entropy(res_1, ones)
         recon_xlth, res_2 = discriminator(decoder(z))
         fake_loss = F.binary_cross_entropy(res_2, zeros)
-        _, res_3 = discriminator(decoder(z_p))
+        _, res_3 = discriminator(x_p)
         noise_loss = F.binary_cross_entropy(res_3, zeros)
         loss_discriminator = real_loss + fake_loss + noise_loss
 
         loss_llike = F.mse_loss( recon_xlth , x_lth , reduction= 'mean')
 
-        loss_decoder = 15. * loss_llike - loss_discriminator
+        loss_decoder = gamma * loss_llike - loss_discriminator
 
         optimizer_dec.zero_grad()
         loss_decoder.backward(retain_graph=True)
@@ -280,13 +284,14 @@ def train(epoch):
 
         loss_prior = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-        loss_encoder = loss_prior + loss_llike
+        loss_encoder = loss_prior + beta * loss_llike
 
         optimizer_enc.zero_grad()
         loss_encoder.backward()
         optimizer_enc.step()
 
 
+        save_image(    'results/sample_' + str(epoch) + '.png')
 
     #         recon_batch = decoder(z)
 # 
@@ -350,3 +355,4 @@ if __name__ == "__main__":
             sample = decoder.forward(sample).to(device)
             save_image(sample.view(args.batch_size, 1, args.representation_size, args.representation_size),
                        'results/sample_' + str(epoch) + '.png')
+     
