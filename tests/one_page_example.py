@@ -104,7 +104,7 @@ class Discriminator(nn.Module):
              ('relu2', nn.ReLU())
              ]))    
 
-        self.lth_features = nn.Sequential( nn.Linear(6912, 1024),
+        self.lth_features = nn.Sequential(nn.Linear(6912, 1024),
                 nn.ReLU() )
 
         self.validity = nn.Sequential( nn.Linear(1024, 1), nn.Sigmoid() )
@@ -112,7 +112,7 @@ class Discriminator(nn.Module):
     def forward(self, x):
 
         main = self.main(x)
-        lth_features = self.lth_features(main.view(128, -1))
+        lth_features = self.lth_features(main.view(args.batch_size, -1))
 
         return lth_features, self.validity(lth_features)
 # Set seed
@@ -268,7 +268,7 @@ def train(epoch):
                 loss_enc.item() / len(data),
                 loss_dis.item() / len(data),))
         # Temporary early stopping
-        if batch_idx == 30:
+        if batch_idx == 10:
             break
 
     print('====> Epoch: {} Average decoder loss: {:.4f}'.format(
@@ -300,4 +300,4 @@ if __name__ == "__main__":
             sample = torch.randn((args.batch_size, 4, 6, 6)).to(device)
             sample = decoder.forward(sample).to(device)
             save_image(sample.view(args.batch_size, 1, args.representation_size, args.representation_size),
-                    'results/sample_' + str(epoch) + '.png')
+                       'results/sample_' + str(epoch) + '.png')
