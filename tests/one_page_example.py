@@ -176,9 +176,9 @@ beta = 5.
 
 gamma = 15.
 # Optimizers
-optimizer_enc = optim.Adam(encoder.parameters(), lr=0.001)
-optimizer_dec = optim.Adam(decoder.parameters(), lr=0.001)
-optimizer_dis = optim.Adam(discriminator.parameters(), lr= 0.001 * 0.1)
+optimizer_enc = optim.RMSProp(encoder.parameters(), lr=args.lr)
+optimizer_dec = optim.RMSProp(decoder.parameters(), lr=args.lr)
+optimizer_dis = optim.RMSProp(discriminator.parameters(), lr=args.lr * 0.1)
 
 ######################################
 #### Loss Helpers Definitions
