@@ -281,8 +281,7 @@ def train(epoch):
         optimizer_dec.step()
 
         #train encoder
-
-        loss_prior = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+        loss_prior = 1 + logvar - mu.pow(2) - logvar.exp()
         loss_prior = (-0.5 * torch.sum(loss_prior))/torch.numel(mu.data)
 
         loss_encoder = loss_prior + beta * loss_llike
