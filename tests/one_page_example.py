@@ -170,39 +170,39 @@ optimizer_dis = optim.RMSprop(discriminator.parameters(), lr=args.lr)
 ######################################
 #### Loss Helpers Definitions
 ######################################
-def loss_llikelihood(discriminator, recon_x, x):
-
-    recon_x_lth, _  = discriminator.forward(recon_x)
-
-    x_lth, _ = discriminator.forward(x)
-
-    res = F.mse_loss( recon_x_lth , x_lth , reduction= 'mean')
-
-    return res
-
-def loss_prior(recon_x, x, mu, logvar):
-
-    return -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-
-def loss_discriminator(discriminator, decoder, z, x):
-    _, res_1 = discriminator(x)
-    _, res_2 = discriminator(decoder(z))
-
-    ones = torch.ones((x.shape[0],1)).to(device)
-    zeros = torch.zeros((x.shape[0],1)).to(device) 
-
-    real_loss = F.binary_cross_entropy(res_1, ones)
-    fake_loss = F.binary_cross_entropy(res_2, zeros)
-
-    return real_loss + fake_loss
-
-def loss_encoder(discriminator, recon_x, x, mu, logvar):
-
-    return loss_prior(recon_x, x, mu, logvar) + loss_llikelihood(discriminator, recon_x, x)
-
-def loss_decoder(discriminator, recon_x, x, decoder, z, gamma=1):
-
-    return gamma * loss_llikelihood(discriminator, recon_x, x) - loss_discriminator(discriminator, decoder, z, x)
+# def loss_llikelihood(discriminator, recon_x, x):
+#
+#     recon_x_lth, _  = discriminator.forward(recon_x)
+#
+#     x_lth, _ = discriminator.forward(x)
+#
+#     res = F.mse_loss( recon_x_lth , x_lth , reduction= 'mean')
+#
+#     return res
+#
+# def loss_prior(recon_x, x, mu, logvar):
+#
+#     return -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+#
+# def loss_discriminator(discriminator, decoder, z, x):
+#     _, res_1 = discriminator(x)
+#     _, res_2 = discriminator(decoder(z))
+#
+#     ones = torch.ones((x.shape[0],1)).to(device)
+#     zeros = torch.zeros((x.shape[0],1)).to(device)
+#
+#     real_loss = F.binary_cross_entropy(res_1, ones)
+#     fake_loss = F.binary_cross_entropy(res_2, zeros)
+#
+#     return real_loss + fake_loss
+#
+# def loss_encoder(discriminator, recon_x, x, mu, logvar):
+#
+#     return loss_prior(recon_x, x, mu, logvar) + loss_llikelihood(discriminator, recon_x, x)
+#
+# def loss_decoder(discriminator, recon_x, x, decoder, z, gamma=1):
+#
+#     return gamma * loss_llikelihood(discriminator, recon_x, x) - loss_discriminator(discriminator, decoder, z, x)
 ######################################
 
 def train(epoch):
