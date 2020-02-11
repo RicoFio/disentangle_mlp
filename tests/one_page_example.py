@@ -112,7 +112,8 @@ class Discriminator(nn.Module):
     def forward(self, x):
 
         main = self.main(x)
-        lth_features = self.lth_features(main.view(args.batch_size, -1))
+        view = main.view(x.shape[0], -1)
+        lth_features = self.lth_features(view)
 
         return lth_features, self.validity(lth_features)
 # Set seed
@@ -166,10 +167,6 @@ optimizer_enc = optim.RMSprop(encoder.parameters(), lr=args.lr)
 optimizer_dec = optim.RMSprop(decoder.parameters(), lr=args.lr)
 optimizer_dis = optim.RMSprop(discriminator.parameters(), lr=args.lr)
 
-# Great Global Variables - GGVs
-ones = torch.ones((128,1)).to(device)
-zeros = torch.zeros((128,1)).to(device)
-
 ######################################
 #### Loss Helpers Definitions
 ######################################
@@ -190,6 +187,9 @@ def loss_prior(recon_x, x, mu, logvar):
 def loss_discriminator(discriminator, decoder, z, x):
     _, res_1 = discriminator(x)
     _, res_2 = discriminator(decoder(z))
+
+    ones = torch.ones((x.shape[0],1)).to(device)
+    zeros = torch.zeros((x.shape[0],1)).to(device) 
 
     real_loss = F.binary_cross_entropy(res_1, ones)
     fake_loss = F.binary_cross_entropy(res_2, zeros)
@@ -228,7 +228,9 @@ def train(epoch):
 
 
     for batch_idx, (data, _) in tqdm(enumerate(train_loader)):
-
+        if batch_idx < 468:
+            continue
+        # last batch size 96,1,28,28
         data = data.to(device)
 
             # encoder
@@ -267,9 +269,6 @@ def train(epoch):
                 loss_dec.item() / len(data), 
                 loss_enc.item() / len(data),
                 loss_dis.item() / len(data),))
-        # Temporary early stopping
-        if batch_idx == 10:
-            break
 
     print('====> Epoch: {} Average decoder loss: {:.4f}'.format(
           epoch, train_loss_dec / len(train_loader.dataset)))
