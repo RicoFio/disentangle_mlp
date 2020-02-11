@@ -194,16 +194,6 @@ def loss_discriminator(discriminator, decoder, z, x):
     real_loss = F.binary_cross_entropy(res_1, ones)
     fake_loss = F.binary_cross_entropy(res_2, zeros)
 
-    # _ , i = discriminator.forward(x)
-    # left = torch.log(i)
-
-    # _ , j = discriminator(decoder(z))
-    # right = torch.log(1. - j)
-
-    # res = left + right 
-
-    # return res
-
     return real_loss + fake_loss
 
 def loss_encoder(discriminator, recon_x, x, mu, logvar):
@@ -238,10 +228,56 @@ def train(epoch):
         x_p = decoder(z_p)
 
         # train disc
+        _ , res_1 = discriminator(data)
+        real_loss = F.binary_cross_entropy(res_1, ones)
+
+        _ , res_2 = discriminator(decoder(z))
+        fake_loss = F.binary_cross_entropy(res_2, zeros)
+
+        _, res_3 = discriminator(x_p)
+
+        noise_loss = F.binary_cross_entropy(res_3, zeros)
+
+        loss_discriminator = real_loss + fake_loss + noise_loss
+
+        optimizer_dis.zero_grad()
+
+        loss_discriminator.backward(retain_graph=True)
+
+        optimizer_dis.step()
+
+        #train decoder
+
+        #copy pasta
+        x_lth, res_1 = discriminator(data)
+        real_loss = F.binary_cross_entropy(res_1, ones)
+        recon_xlth, res_2 = discriminator(decoder(z))
+        fake_loss = F.binary_cross_entropy(res_2, zeros)
+        _, res_3 = discriminator(decoder(z_p))
+        noise_loss = F.binary_cross_entropy(res_3, zeros)
+        loss_discriminator = real_loss + fake_loss + noise_loss
+
+        loss_llike = F.mse_loss( recon_xlth , x_lth , reduction= 'mean')
+
+        loss_decoder = 15. * loss_llike - loss_discriminator
+
+        optimizer_dec.zero_grad()
+        loss_decoder.backward(retain_graph=True)
+        optimizer_dec.step()
+
+        #train encoder
+
+        loss_prior = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+        loss_encoder = loss_prior + loss_llike
+
+        optimizer_enc.zero_grad()
+        loss_encoder.backward()
+        optimizer_enc.step()
 
 
 
-#         recon_batch = decoder(z)
+    #         recon_batch = decoder(z)
 # 
 #         loss_enc = torch.mean(loss_encoder(discriminator, recon_batch, data, mu, logvar))
 #         loss_enc.backward(retain_graph=True)
