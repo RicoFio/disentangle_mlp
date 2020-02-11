@@ -244,34 +244,32 @@ def train(epoch):
 
         # train disc
         ones = torch.ones((data.shape[0],1)).to(device)
-        zeros = torch.zeros((data.shape[0],1)).to(device) 
-        _ , res_1 = discriminator(data)
-        real_loss = F.binary_cross_entropy(res_1, ones)
+        zeros = torch.zeros((data.shape[0],1)).to(device)
 
-        _ , res_2 = discriminator(reconstructed_data)
-        fake_loss = F.binary_cross_entropy(res_2, zeros)
+        _ , val_1 = discriminator(data)
+        real_loss = F.binary_cross_entropy(val_1, ones)
 
-        _, res_3 = discriminator(x_p)
+        _ , val_2 = discriminator(reconstructed_data)
+        fake_loss = F.binary_cross_entropy(val_2, zeros)
 
-        noise_loss = F.binary_cross_entropy(res_3, zeros)
+        _, val_3 = discriminator(x_p)
+        noise_loss = F.binary_cross_entropy(val_3, zeros)
 
         loss_discriminator = real_loss + fake_loss + noise_loss
 
         optimizer_dis.zero_grad()
-
         loss_discriminator.backward(retain_graph=True)
-
         optimizer_dis.step()
 
         #train decoder
 
         #copy pasta
-        x_lth, res_1 = discriminator(data)
-        real_loss = F.binary_cross_entropy(res_1, ones)
-        recon_xlth, res_2 = discriminator(reconstructed_data)
-        fake_loss = F.binary_cross_entropy(res_2, zeros)
-        _, res_3 = discriminator(x_p)
-        noise_loss = F.binary_cross_entropy(res_3, zeros)
+        x_lth, val_1 = discriminator(data)
+        real_loss = F.binary_cross_entropy(val_1, ones)
+        recon_xlth, val_2 = discriminator(reconstructed_data)
+        fake_loss = F.binary_cross_entropy(val_2, zeros)
+        _, val_3 = discriminator(x_p)
+        noise_loss = F.binary_cross_entropy(val_3, zeros)
         loss_discriminator = real_loss + fake_loss + noise_loss
 
         loss_llike = F.mse_loss( recon_xlth , x_lth , reduction= 'mean')
@@ -285,6 +283,7 @@ def train(epoch):
         #train encoder
 
         loss_prior = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+        loss_prior = (-0.5 * torch.sum(loss_prior))/torch.numel(mu.data)
 
         loss_encoder = loss_prior + beta * loss_llike
 
