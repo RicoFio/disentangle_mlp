@@ -176,9 +176,9 @@ beta = 5.
 
 gamma = 15.
 # Optimizers
-optimizer_enc = optim.RMSProp(encoder.parameters(), lr=args.lr)
-optimizer_dec = optim.RMSProp(decoder.parameters(), lr=args.lr)
-optimizer_dis = optim.RMSProp(discriminator.parameters(), lr=args.lr * 0.1)
+optimizer_enc = optim.RMSprop(encoder.parameters(), lr=args.lr)
+optimizer_dec = optim.RMSprop(decoder.parameters(), lr=args.lr)
+optimizer_dis = optim.RMSprop(discriminator.parameters(), lr=args.lr * 0.1)
 
 ######################################
 #### Loss Helpers Definitions
@@ -290,9 +290,9 @@ def train(epoch):
         loss_encoder.backward()
         optimizer_enc.step()
 
-        if batch_idx == 460:
+        if batch_idx % 5 == 0:
             print(reconstructed_data.shape)
-            save_image(  reconstructed_data , 'results/recon_' + str(epoch) + '.png')
+            save_image(  reconstructed_data , 'results/recon_' + str(epoch) + str(batch_idx)  + '.png')
 
     #         recon_batch = decoder(z)
 # 
