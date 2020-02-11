@@ -228,34 +228,37 @@ def train(epoch):
 
 
     for batch_idx, (data, _) in tqdm(enumerate(train_loader)):
-        if batch_idx < 468:
-            continue
         # last batch size 96,1,28,28
         data = data.to(device)
 
-            # encoder
-        optimizer_enc.zero_grad()   
-
-            # encoder takes data and returns 
         z, mu, logvar = encoder(data)
-        recon_batch = decoder(z)
 
-        loss_enc = torch.mean(loss_encoder(discriminator, recon_batch, data, mu, logvar))
-        loss_enc.backward(retain_graph=True)
-        optimizer_enc.step()
+        z_p = torch.randn_like(z)
 
-            # decoder 
-        optimizer_dec.zero_grad()
-        loss_dec = torch.mean(loss_decoder(discriminator, recon_batch, data, decoder, z, gamma=0.01))
-        loss_dec.backward(retain_graph=True)
-        optimizer_dec.step()
+        x_p = decoder(z_p)
 
-            # discriminator
-        optimizer_dis.zero_grad()
-            
-        loss_dis = torch.mean(loss_discriminator(discriminator, decoder, z, data))
-        loss_dis.backward()
-        optimizer_dis.step()
+        # train disc
+
+
+
+#         recon_batch = decoder(z)
+# 
+#         loss_enc = torch.mean(loss_encoder(discriminator, recon_batch, data, mu, logvar))
+#         loss_enc.backward(retain_graph=True)
+#         optimizer_enc.step()
+# 
+#             # decoder 
+#         optimizer_dec.zero_grad()
+#         loss_dec = torch.mean(loss_decoder(discriminator, recon_batch, data, decoder, z, gamma=0.01))
+#         loss_dec.backward(retain_graph=True)
+#         optimizer_dec.step()
+# 
+#             # discriminator
+#         optimizer_dis.zero_grad()
+#             
+#         loss_dis = torch.mean(loss_discriminator(discriminator, decoder, z, data))
+#         loss_dis.backward()
+#         optimizer_dis.step()
 
             # Summed error over epoch
         train_loss_dec += loss_dec.item()
