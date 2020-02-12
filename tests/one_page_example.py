@@ -204,19 +204,19 @@ def train(epoch):
         data = data.to(device)
 
         # Forward pass
-        #variable names like in paper's algorithm
+        # variable names like in paper's algorithm
         z, mu, logvar = encoder(data)
         z_p = torch.randn_like(z)
         x_p = decoder(z_p)
         reconstructed_data = decoder(z)
 
         # train disc
-        _ , val_1 = discriminator(data)
-        real_loss = F.binary_cross_entropy(val_1, ones)
-        _ , val_2 = discriminator(reconstructed_data)
-        fake_loss = F.binary_cross_entropy(val_2, zeros)
-        _, val_3 = discriminator(x_p)
-        noise_loss = F.binary_cross_entropy(val_3, zeros)
+        _ , validity_real = discriminator(data)
+        real_loss = F.binary_cross_entropy(validity_real, ones)
+        _ , validity_reconstructed = discriminator(reconstructed_data)
+        fake_loss = F.binary_cross_entropy(validity_reconstructed, zeros)
+        _, validity_reconstructed_noise = discriminator(x_p)
+        noise_loss = F.binary_cross_entropy(validity_reconstructed_noise, zeros)
         # Final discriminator loss
         loss_discriminator = real_loss + fake_loss + noise_loss
 
@@ -227,14 +227,14 @@ def train(epoch):
 
         # train decoder
         # ugly copy pasta
-        x_lth, val_1 = discriminator(data)
-        real_loss = F.binary_cross_entropy(val_1, ones)
-        recon_xlth, val_2 = discriminator(reconstructed_data)
-        fake_loss = F.binary_cross_entropy(val_2, zeros)
-        _, val_3 = discriminator(x_p)
-        noise_loss = F.binary_cross_entropy(val_3, zeros)
+        hidden_real, validity_real = discriminator(data)
+        real_loss = F.binary_cross_entropy(validity_real, ones)
+        hidden_reconstr, validity_reconstructed = discriminator(reconstructed_data)
+        fake_loss = F.binary_cross_entropy(validity_reconstructed, zeros)
+        _, validity_reconstructed_noise = discriminator(x_p)
+        noise_loss = F.binary_cross_entropy(validity_reconstructed_noise, zeros)
         loss_discriminator = real_loss + fake_loss + noise_loss
-        loss_llike = F.mse_loss( recon_xlth , x_lth , reduction= 'mean')
+        loss_llike = F.mse_loss( hidden_reconstr, hidden_real, reduction='mean')
         # Final decoder loss
         loss_decoder = gamma * loss_llike - loss_discriminator
 
