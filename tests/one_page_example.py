@@ -10,6 +10,8 @@ from torch.autograd import Variable
 
 from collections import OrderedDict
 
+import numpy as np
+
 from tqdm import tqdm
 
 import os
@@ -42,17 +44,17 @@ class Encoder(nn.Module):
         super(Encoder, self).__init__()
 
         self.features = nn.Sequential(OrderedDict([
-            ('conv1', nn.Conv2d(in_channels=1, out_channels=16, kernel_size=3, stride=1)),
-            ('bn1', nn.BatchNorm2d(16)),
-            ('relu1', nn.ReLU()),
-            ( 'pool1', nn.MaxPool2d(2, 2))
+            ('conv1f', nn.Conv2d(1, 16, 3, padding=1)),
+            ('bn1f', nn.BatchNorm2d(16)),
+            ('relu1f', nn.ReLU()),
+            ( 'pool1f', nn.MaxPool2d(2, 2))
             ]))       
 
         self.mean =  nn.Sequential(OrderedDict([
-            ('conv2', nn.Conv2d(16, 4, 3, padding=1)),  
-            ('bn2', nn.BatchNorm2d(4)),
-            ('relu2', nn.ReLU()), 
-            ( 'pool1', nn.MaxPool2d(2, 2))
+            ('conv2m', nn.Conv2d(16, 4, 3, padding=1)),  
+            ('bn2m', nn.BatchNorm2d(4)),
+            ('relu2m', nn.ReLU()), 
+            ( 'pool1m', nn.MaxPool2d(2, 2))
             ]))
 
         self.logvar =  nn.Sequential(OrderedDict([
@@ -79,22 +81,9 @@ class Decoder(nn.Module):
         super(Decoder, self).__init__()
 
         self.decoder = nn.Sequential(OrderedDict([
-            ('convt1', nn.ConvTranspose2d(4, 16, 2, stride=2)),
-            ('bn1', nn.BatchNorm2d(16)),
-            ('relu1', nn.ReLU()), 
-            ('convt3', nn.ConvTranspose2d(16, 1, 2, stride=2)),
-            ('bn2', nn.BatchNorm2d(1)),
-            ('relu3', nn.ReLU()), 
-            ('convt4', nn.ConvTranspose2d(1, 1, 2, stride=1)),
-            ('bn3', nn.BatchNorm2d(1)),
-            ('relu4', nn.ReLU()), 
-            ('convt5', nn.ConvTranspose2d(1, 1, 2, stride=1)),
-            ('bn4', nn.BatchNorm2d(1)),
-            ('relu5', nn.ReLU()), 
-            ('convt6', nn.ConvTranspose2d(1, 1, 2, stride=1)),
-            ('bn5', nn.BatchNorm2d(1)),
-            ('relu6', nn.ReLU()), 
-            ('convt7', nn.ConvTranspose2d(1, 1, 2, stride=1)),
+            ('deconv1', nn.ConvTranspose2d(4, 16, 2, stride=2)),
+            ('relu1', nn.ReLU()),
+            ('deconv2', nn.ConvTranspose2d(16, 1, 2, stride=2))
             ]))
 
     def forward(self, z):
@@ -124,7 +113,15 @@ class Discriminator(nn.Module):
         view = main.view(x.shape[0], -1)
         lth_features = self.lth_features(view)
 
-        return lth_features, self.validity(lth_features)
+        return self.validity(lth_features)
+
+    def hidden_representation(self, x):
+
+        main = self.main(x)
+        view = main.view(x.shape[0], -1)
+        lth_features = self.lth_features(view)
+
+        return lth_features
 
 # Set seed
 torch.manual_seed(args.seed)
@@ -208,15 +205,21 @@ def train(epoch):
         z, mu, logvar = encoder(data)
         z_p = torch.randn_like(z)
         x_p = decoder(z_p)
+        print(x_p.shape)
         reconstructed_data = decoder(z)
 
         # train disc
-        _ , validity_real = discriminator(data)
+        validity_real = discriminator(data)
         real_loss = F.binary_cross_entropy(validity_real, ones)
-        _ , validity_reconstructed = discriminator(reconstructed_data)
+        print("Validity real: ", torch.mean(validity_real))
+        print(real_loss)
+        validity_reconstructed = discriminator(reconstructed_data)
+        print("Validity recon: ", torch.mean(validity_reconstructed))
         fake_loss = F.binary_cross_entropy(validity_reconstructed, zeros)
-        _, validity_reconstructed_noise = discriminator(x_p)
+        print(fake_loss)
+        validity_reconstructed_noise = discriminator(x_p)
         noise_loss = F.binary_cross_entropy(validity_reconstructed_noise, zeros)
+        print(noise_loss)
         # Final discriminator loss
         loss_discriminator = real_loss + fake_loss + noise_loss
 
@@ -227,16 +230,23 @@ def train(epoch):
 
         # train decoder
         # ugly copy pasta
-        hidden_real, validity_real = discriminator(data)
+        validity_real = discriminator(data)
+        hidden_real = discriminator.hidden_representation(data)
         real_loss = F.binary_cross_entropy(validity_real, ones)
-        hidden_reconstr, validity_reconstructed = discriminator(reconstructed_data)
+        validity_reconstructed = discriminator(reconstructed_data)
+        hidden_reconstr = discriminator.hidden_representation(reconstructed_data)
         fake_loss = F.binary_cross_entropy(validity_reconstructed, zeros)
-        _, validity_reconstructed_noise = discriminator(x_p)
+        #print(fake_loss)
+        validity_reconstructed_noise = discriminator(x_p)
         noise_loss = F.binary_cross_entropy(validity_reconstructed_noise, zeros)
+        #print(noise_loss)
         loss_discriminator = real_loss + fake_loss + noise_loss
         loss_llike = F.mse_loss( hidden_reconstr, hidden_real, reduction='mean')
+        #print(loss_discriminator)
+        #print(loss_llike)
         # Final decoder loss
-        loss_decoder = gamma * loss_llike - loss_discriminator
+        loss_decoder = 1 * loss_llike
+        #print(loss_decoder)
 
         # Update decoder
         optimizer_dec.zero_grad()

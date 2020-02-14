@@ -9,8 +9,16 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
             "console": "integratedTerminal",
-            "env": "mlpcw3"
+            "env": "mlpcw3",
+            "cwd": "${workspaceFolder}/results"
         }
     ]
 }
