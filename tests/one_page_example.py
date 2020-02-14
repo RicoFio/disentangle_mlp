@@ -168,7 +168,7 @@ alpha = 0.1
 
 beta = 5.
 
-gamma = 15.
+gamma = 1.
 # Optimizers
 optimizer_enc = optim.RMSprop(encoder.parameters(), lr=args.lr)
 optimizer_dec = optim.RMSprop(decoder.parameters(), lr=args.lr)
@@ -245,7 +245,7 @@ def train(epoch):
         #print(loss_discriminator)
         #print(loss_llike)
         # Final decoder loss
-        loss_decoder = 1 * loss_llike
+        loss_decoder = gamma * loss_llike - loss_discriminator
         #print(loss_decoder)
 
         # Update decoder
