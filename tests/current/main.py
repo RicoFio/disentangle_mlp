@@ -1,7 +1,6 @@
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
-import numpy as np
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
@@ -157,10 +156,10 @@ def training():
             T_loss_kld.append(loss_kld)
 
 
-        T_loss_D = np.mean(T_loss_D)
-        T_loss_G = np.mean(T_loss_G)
-        T_loss_GD = np.mean(T_loss_GD)
-        T_loss_kld = np.mean(T_loss_kld)
+        T_loss_D = T.mean(T_loss_D)
+        T_loss_G = T.mean(T_loss_G)
+        T_loss_GD = T.mean(T_loss_GD)
+        T_loss_kld = T.mean(T_loss_kld)
 
         print("epoch:", epoch, "loss_D:", "%.4f"%T_loss_D, "loss_G:", "%.4f"%T_loss_G, "loss_GD:", "%.4f"%T_loss_GD, "loss_kld:", "%.4f"%T_loss_kld)
 
