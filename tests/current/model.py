@@ -184,16 +184,15 @@ class Encoder_mnist_test(nn.Module):
     def __init__(self, opt):
         super(Encoder_mnist_test, self).__init__()
         self.resnet = models.resnet18(pretrained=True)
-        self.resnet.conv1 = nn.Conv2d(1, self.inplanes, kernel_size=7, stride=2, padding=3,
+        self.resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=10,
                                bias=False)
-        self.resnet.avgpool = nn.AvgPool2d(4,1,0)
         self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
 
         self.x_to_mu = nn.Linear(512,opt.n_z)
         self.x_to_logvar = nn.Linear(512, opt.n_z)
 
     def reparameterize(self, x):
-        mu = self.x_to_mu(x)
+        mu = self.x_to_mu(x) 
         logvar = self.x_to_logvar(x)
         z = T.randn(mu.size())
         z = get_cuda(z)
@@ -203,6 +202,7 @@ class Encoder_mnist_test(nn.Module):
 
     def forward(self, x):
         x = self.resnet(x).squeeze()
+        print("Size ", x.shape)
         z, kld = self.reparameterize(x)
         return z, kld
 
@@ -233,6 +233,7 @@ class Generator_mnist_test(nn.Module):
     def forward(self, z):
         z = z.view(z.size(0), z.size(1), 1, 1)
         x_gen = self.convs(z)
+        print("Size Generated ", x_gen.shape)
         return x_gen
 
 
