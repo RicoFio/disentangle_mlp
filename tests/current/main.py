@@ -3,6 +3,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 import numpy as np
 import torch as T
+import torch.nn as nn
 import torch.nn.functional as F
 from model import *
 import random
@@ -19,6 +20,7 @@ if not os.path.exists("data/saved_models"):
     os.makedirs("data/saved_models")
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--dataset', type=str, default="mnist")
 parser.add_argument('--batch_size', type=int, default=64)
 parser.add_argument('--epochs', type=int, default=101)
 parser.add_argument('--lr_e', type=float, default=0.0002)
@@ -52,9 +54,18 @@ if T.cuda.is_available():
 
 train_loader = get_data_loader(opt)
 
-E = get_cuda(Encoder(opt))
-G = get_cuda(Generator(opt)).apply(weights_init)
-D = get_cuda(Discriminator()).apply(weights_init)
+if opt.dataset == "birds":
+    E = get_cuda(Encoder_birds(opt))
+    G = get_cuda(Generator_birds(opt)).apply(weights_init)
+    D = get_cuda(Discriminator_birds()).apply(weights_init)
+
+elif opt.dataset == "mnist":
+    E = get_cuda(Encoder_mnist(opt))
+    G = get_cuda(Generator_mnist(opt)).apply(weights_init)
+    D = get_cuda(Discriminator_mnist()).apply(weights_init)
+
+elif opt.dataset == "celebA":
+    raise NotImplementedError
 
 device_ids = list(range(T.cuda.device_count()))
 print(device_ids)

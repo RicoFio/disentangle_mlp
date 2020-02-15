@@ -1,16 +1,18 @@
-import torch as T
-import torch.nn as nn
-import torchvision.models as models
-import torch.nn.functional as F
+import T as T
+import T.nn as nn
+import Tvision.models as models
+import T.nn.functional as F
+
+from collections import OrderedDict
 
 def get_cuda(tensor):
     if T.cuda.is_available():
         tensor = tensor.cuda()
     return tensor
 
-class Encoder(nn.Module):
+class Encoder_birds(nn.Module):
     def __init__(self, opt):
-        super(Encoder, self).__init__()
+        super(Encoder_birds, self).__init__()
         self.resnet = models.resnet18(pretrained=True)
         self.resnet.avgpool = nn.AvgPool2d(4,1,0)
         self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
@@ -33,9 +35,9 @@ class Encoder(nn.Module):
         return z, kld
 
 
-class Generator(nn.Module):
+class Generator_birds(nn.Module):
     def __init__(self, opt):
-        super(Generator, self).__init__()
+        super(Generator_birds, self).__init__()
         self.convs = nn.Sequential(
             nn.ConvTranspose2d(opt.n_z, 512, 4, 1, 0, bias=False),
             nn.ReLU(inplace=True),
@@ -62,9 +64,9 @@ class Generator(nn.Module):
         return x_gen
 
 
-class Discriminator(nn.Module):
+class Discriminator_birds(nn.Module):
     def __init__(self):
-        super(Discriminator, self).__init__()
+        super(Discriminator_birds, self).__init__()
         self.convs = nn.Sequential(
             nn.Conv2d(3, 64, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
@@ -94,6 +96,88 @@ class Discriminator(nn.Module):
         f_d = F.avg_pool2d(f_d, 4, 1, 0)
         return x.squeeze(), f_d.squeeze()
 
+
+class Encoder_mnist(nn.Module):
+    def __init__(self):
+        super(Encoder_mnist, self).__init__()
+
+        self.features = nn.Sequential(OrderedDict([
+            ('conv1f', nn.Conv2d(1, 16, 3, padding=1)),
+            ('bn1f', nn.BatchNorm2d(16)),
+            ('relu1f', nn.ReLU()),
+            ('pool1f', nn.MaxPool2d(2, 2))
+            ]))       
+
+        self.mean =  nn.Sequential(OrderedDict([
+            ('conv2m', nn.Conv2d(16, 4, 3, padding=1)),  
+            ('bn2m', nn.BatchNorm2d(4)),
+            ('relu2m', nn.ReLU()), 
+            ('pool1m', nn.MaxPool2d(2, 2))
+            ]))
+
+        self.logvar =  nn.Sequential(OrderedDict([
+            ('conv2', nn.Conv2d(16, 4, 3, padding=1)),  
+            ('bn2', nn.BatchNorm2d(4)),
+            ('relu2', nn.ReLU()), 
+            ('pool1', nn.MaxPool2d(2, 2))
+            ]))
+
+    def reparameterize(self, x):
+        mu = self.mean(x)
+        logvar = self.logvar(x)
+        z = T.randn(mu.size())
+        z = get_cuda(z)
+        z = mu + z * T.exp(0.5 * logvar)
+        kld = (-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1))
+        return z, kld
+
+    def forward(self, x):
+        x = self.features(x)
+        z, kld = self.reparameterize(x)
+        return z, kld
+
+
+class Generator_mnist(nn.Module):
+    def __init__(self):
+        super(Generator_mnist, self).__init__()
+
+        self.decoder = nn.Sequential(OrderedDict([
+            ('deconv1', nn.ConvTranspose2d(4, 16, 2, stride=2)),
+            ('relu1', nn.ReLU()),
+            ('deconv2', nn.ConvTranspose2d(16, 1, 2, stride=2)),
+            ('sigmoid', nn.Sigmoid())
+            ]))
+
+    def forward(self, z):
+        return self.decoder(z)
+
+
+class Discriminator_mnist(nn.Module):
+    def __init__(self):
+        super(Discriminator_mnist, self).__init__()
+        
+        self.main = nn.Sequential(OrderedDict([
+            ('conv1', nn.Conv2d(in_channels=1, out_channels=6, kernel_size=3, stride=1)),
+             ('bn1', nn.BatchNorm2d(6)),
+             ('relu1', nn.ReLU()),
+             ('conv2', nn.Conv2d(in_channels=6,out_channels=12, kernel_size=3, stride=1)),
+             ('bn2', nn.BatchNorm2d(12)),
+             ('relu2', nn.ReLU())
+             ]))    
+
+        self.lth_features = nn.Sequential(nn.Linear(6912, 1024),
+                nn.ReLU() )
+
+        self.validity = nn.Sequential(nn.Linear(1024, 1), nn.Sigmoid())
+
+    def forward(self, x):
+
+        main = self.main(x)
+        view = main.view(x.shape[0], -1)
+        f_d = self.lth_features(view)
+        x = self.validity(lth_features)
+
+        return x, f_d
 
 
 
