@@ -223,7 +223,7 @@ class Generator_mnist_test(nn.Module):
             nn.ConvTranspose2d(96, 64, 4, 2, 1, bias=False),
             nn.BatchNorm2d(64),
             nn.LeakyReLU(inplace=True),
-            nn.ConvTranspose2d(64, 3, 4, 2, 1, bias=False),
+            nn.ConvTranspose2d(64, 1, 4, 2, 1, bias=False),
             nn.Tanh()
         )
 
@@ -231,6 +231,7 @@ class Generator_mnist_test(nn.Module):
     def forward(self, z):
         z = z.view(z.size(0), z.size(1), 1, 1)
         x_gen = self.convs(z)
+        print(x_gen.shape)
         return x_gen
 
 
@@ -238,7 +239,7 @@ class Discriminator_mnist_test(nn.Module):
     def __init__(self):
         super(Discriminator_mnist_test, self).__init__()
         self.convs = nn.Sequential(
-            nn.Conv2d(3, 64, 4, 2, 1, bias=False),
+            nn.Conv2d(1, 64, 4, 2, 1, bias=False),
             nn.LeakyReLU(0.2, inplace=True),
             nn.Conv2d(64, 128, 4, 2, 1, bias=False),
             nn.BatchNorm2d(128),

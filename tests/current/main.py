@@ -53,15 +53,15 @@ if T.cuda.is_available():
 
 train_loader = get_data_loader(opt)
 
-if opt.dataset == "birds" or opt.dataset == "mnist":
+if opt.dataset == "birds":
     E = get_cuda(Encoder_birds(opt))
     G = get_cuda(Generator_birds(opt)).apply(weights_init)
     D = get_cuda(Discriminator_birds()).apply(weights_init)
 
 elif opt.dataset == "mnist":
-    E = get_cuda(Encoder_mnist(opt))
-    G = get_cuda(Generator_mnist(opt)).apply(weights_init)
-    D = get_cuda(Discriminator_mnist()).apply(weights_init)
+    E = get_cuda(Encoder_mnist_test(opt))
+    G = get_cuda(Generator_mnist_test(opt)).apply(weights_init)
+    D = get_cuda(Discriminator_mnist_test()).apply(weights_init)
 
 elif opt.dataset == "celebA":
     raise NotImplementedError
