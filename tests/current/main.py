@@ -28,7 +28,7 @@ parser.add_argument('--lr_g', type=float, default=0.0002)
 parser.add_argument('--lr_d', type=float, default=0.0002)
 parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=36)
-parser.add_argument('--n_z', type=int, default=200)
+parser.add_argument('--n_z', nargs='+', type=int, default=200)
 parser.add_argument('--img_size', type=int, default=128)
 parser.add_argument('--w_kld', type=float, default=1)
 parser.add_argument('--w_loss_g', type=float, default=0.01)
@@ -90,7 +90,7 @@ def train_batch(x_r):
     x_f = G(z)
 
     #Extract latent_z corresponding to noise
-    z_p = T.randn(batch_size, opt.n_z)
+    z_p = T.randn(batch_size, *opt.n_z)
     z_p = get_cuda(z_p)
     #Extract fake images corresponding to noise
     x_p = G(z_p)
@@ -177,7 +177,7 @@ def training():
 
 
 def generate_samples(img_name):
-    z_p = T.randn(opt.n_samples, opt.n_z)
+    z_p = T.randn(opt.n_samples, *opt.n_z)
     z_p = get_cuda(z_p)
     E.eval()
     G.eval()

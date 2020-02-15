@@ -1,7 +1,7 @@
-import T as T
-import T.nn as nn
-import Tvision.models as models
-import T.nn.functional as F
+import torch as T
+import torch.nn as nn
+import torchvision.models as models
+import torch.nn.functional as F
 
 from collections import OrderedDict
 
