@@ -11,6 +11,11 @@ from dataset import get_data_loader
 import torchvision.utils as utils
 import argparse
 
+import torchvision.models
+from torchvision.models.resnet import model_urls
+
+model_urls['resnet18'] = model_urls['resnet18'].replace('https://', 'http://')
+
 from tqdm import tqdm
 
 save_path = "data/saved_models/saved_model.tar"

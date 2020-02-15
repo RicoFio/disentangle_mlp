@@ -184,8 +184,9 @@ class Encoder_mnist_test(nn.Module):
     def __init__(self, opt):
         super(Encoder_mnist_test, self).__init__()
         self.resnet = models.resnet18(pretrained=True)
-        self.resnet.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=10,
+        self.resnet.conv1 = nn.Conv2d(1, 64, kernel_size=2, stride=2, padding=40,
                                bias=False)
+        self.resnet.avgpool = nn.AvgPool2d(4,1,0)
         self.resnet = nn.Sequential(*list(self.resnet.children())[:-1])
 
         self.x_to_mu = nn.Linear(512,opt.n_z)
@@ -202,7 +203,6 @@ class Encoder_mnist_test(nn.Module):
 
     def forward(self, x):
         x = self.resnet(x).squeeze()
-        print("Size ", x.shape)
         z, kld = self.reparameterize(x)
         return z, kld
 
@@ -210,63 +210,67 @@ class Encoder_mnist_test(nn.Module):
 class Generator_mnist_test(nn.Module):
     def __init__(self, opt):
         super(Generator_mnist_test, self).__init__()
-        self.convs = nn.Sequential(
-            nn.ConvTranspose2d(opt.n_z, 512, 4, 1, 0, bias=False),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(512, 384, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(384),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(384, 192, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(192),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(192, 96, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(96),
-            nn.ReLU(inplace=True),
-            nn.ConvTranspose2d(96, 64, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(64),
-            nn.LeakyReLU(inplace=True),
-            nn.ConvTranspose2d(64, 1, 4, 2, 1, bias=False),
-            nn.Tanh()
-        )
+        #self.convs = nn.Sequential(
+        self.conv1 = nn.ConvTranspose2d(opt.n_z, 512, 7, 1, 0, bias=False)
+        self.relu = nn.ReLU(inplace=True)
+        self.conv2 = nn.ConvTranspose2d(512, 384, 4, 2, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(384)
+        self.conv3 = nn.ConvTranspose2d(384, 192, 4, 2, 1, bias=False)
+        self.bn2 = nn.BatchNorm2d(192)
+        self.conv4 = nn.ConvTranspose2d(192, 1, 5, 1, 2, bias=False)
+        self.tanh = nn.Tanh()
+        #)
 
 
     def forward(self, z):
         z = z.view(z.size(0), z.size(1), 1, 1)
-        x_gen = self.convs(z)
-        print("Size Generated ", x_gen.shape)
+        x_gen = self.conv1(z)
+        x_gen = self.relu(x_gen)
+        x_gen = self.conv2(x_gen)
+        x_gen = self.bn1(x_gen)
+        x_gen = self.relu(x_gen)
+        x_gen = self.conv3(x_gen)
+        x_gen = self.bn2(x_gen)
+        x_gen = self.relu(x_gen)
+        x_gen = self.conv4(x_gen)
+        x_gen = self.tanh(x_gen)
+
         return x_gen
 
 
 class Discriminator_mnist_test(nn.Module):
     def __init__(self):
         super(Discriminator_mnist_test, self).__init__()
-        self.convs = nn.Sequential(
-            nn.Conv2d(1, 64, 4, 2, 1, bias=False),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(64, 128, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(128),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(128, 256, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(256),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(256, 512, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Conv2d(512, 512, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
+        #self.convs = nn.Sequential(
+        self.conv1 = nn.Conv2d(1, 64, 4, 2, 1, bias=False)
+        self.lrelu = nn.LeakyReLU(0.2, inplace=True)
+        self.conv2 = nn.Conv2d(64, 128, 4, 2, 1, bias=False)
+        self.bn1 = nn.BatchNorm2d(128)
+        self.conv3 = nn.Conv2d(128, 256, 4, 2, 1, bias=False)
+        self.bn2 = nn.BatchNorm2d(256)
+        #)
 
         self.last_conv = nn.Sequential(
-            nn.Conv2d(512, 1, 4, 1, 0),
+            nn.Conv2d(256, 1, 4, 2, 1),
             nn.Sigmoid()
         )
 
     def forward(self, x):
 
-        f_d = self.convs(x)
+        f_d = self.conv1(x)
+        print(f_d.shape, "\n")
+        f_d = self.lrelu(f_d)
+        f_d = self.conv2(f_d)
+        print(f_d.shape, "\n")
+        f_d = self.bn1(f_d)
+        f_d = self.lrelu(f_d)
+        f_d = self.conv3(f_d)
+        print(f_d.shape, "\n")
+        f_d = self.bn2(f_d)
+        f_d = self.lrelu(f_d)
         x = self.last_conv(f_d)
-        f_d = F.avg_pool2d(f_d, 4, 1, 0)
+        print(x.shape, "\n")
+        f_d = F.avg_pool2d(f_d, 3, 1, 0)
         return x.squeeze(), f_d.squeeze()
 
 
