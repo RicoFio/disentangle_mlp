@@ -98,7 +98,7 @@ class Discriminator_birds(nn.Module):
 
 
 class Encoder_mnist(nn.Module):
-    def __init__(self):
+    def __init__(self, opt):
         super(Encoder_mnist, self).__init__()
 
         self.features = nn.Sequential(OrderedDict([
@@ -138,7 +138,7 @@ class Encoder_mnist(nn.Module):
 
 
 class Generator_mnist(nn.Module):
-    def __init__(self):
+    def __init__(self, opt):
         super(Generator_mnist, self).__init__()
 
         self.decoder = nn.Sequential(OrderedDict([
@@ -175,7 +175,7 @@ class Discriminator_mnist(nn.Module):
         main = self.main(x)
         view = main.view(x.shape[0], -1)
         f_d = self.lth_features(view)
-        x = self.validity(lth_features)
+        x = self.validity(f_d)
 
         return x, f_d
 

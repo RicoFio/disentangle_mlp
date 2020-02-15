@@ -20,7 +20,7 @@ if not os.path.exists("data/saved_models"):
     os.makedirs("data/saved_models")
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str, default="mnist")
+parser.add_argument('--dataset', type=str, default="birds")
 parser.add_argument('--batch_size', type=int, default=64)
 parser.add_argument('--epochs', type=int, default=101)
 parser.add_argument('--lr_e', type=float, default=0.0002)
