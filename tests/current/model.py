@@ -273,6 +273,15 @@ class Discriminator_mnist_test(nn.Module):
         f_d = F.avg_pool2d(f_d, 3, 1, 0)
         return x.squeeze(), f_d.squeeze()
 
+# Hyperparameters for lfw
+# Epoch size 250
+# Batch size 64
+# Img size 64
+# ? Crop size 150
+# Recon VS gan weight 1e-6
+# Real VS gan weight 0.33
+# discriminate ae recon False
+# Discriminate sample z True
 
 class Encoder_celeba(nn.Module):
     def __init__(self, opt):
