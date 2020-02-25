@@ -43,8 +43,7 @@ parser.add_argument('--lr_g', type=float, default=0.0002)
 parser.add_argument('--lr_d', type=float, default=0.0002)
 parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=36)
-parser.add_argument('--n_z', type=int, default=200)
-parser.add_argument('--representation_size', type=int, nargs='+', default=[])
+parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8])
 parser.add_argument('--input_channels', type=int, default=3)
 parser.add_argument('--output_channels', type=int, default=64)
 parser.add_argument('--img_size', type=int, default=128)
@@ -70,7 +69,7 @@ T.manual_seed(manual_seed)
 if T.cuda.is_available():
     T.cuda.manual_seed_all(manual_seed)
 
-train_loader = get_data_loader(opt)
+train_loader, _ = get_data_loader(opt)
 
 if opt.dataset == "birds":
     E = get_cuda(Encoder_birds(opt))
@@ -83,10 +82,9 @@ elif opt.dataset == "mnist":
     D = get_cuda(Discriminator_mnist_test(opt)).apply(weights_init)
 
 elif opt.dataset == "celebA":
-    opt.representation_size = list(opt.representation_size)
-    E = get_cuda(Encoder_mnist_test(opt))
-    G = get_cuda(Generator_mnist_test(opt)).apply(weights_init)
-    D = get_cuda(Discriminator_mnist_test(opt)).apply(weights_init)
+    E = get_cuda(Encoder_celeba(opt))
+    G = get_cuda(Generator_celeba(opt)).apply(weights_init)
+    D = get_cuda(Discriminator_celeba(opt)).apply(weights_init)
 
 device_ids = list(range(T.cuda.device_count()))
 print(device_ids)
@@ -111,7 +109,7 @@ def train_batch(x_r):
     x_f = G(z)
 
     #Extract latent_z corresponding to noise
-    z_p = T.randn(batch_size, opt.n_z)
+    z_p = T.randn(batch_size, 64) #was opt.n_z
     z_p = get_cuda(z_p)
     #Extract fake images corresponding to noise
     x_p = G(z_p)

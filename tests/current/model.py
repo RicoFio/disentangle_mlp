@@ -296,14 +296,14 @@ class Encoder_celeba(nn.Module):
             nn.ReLU())
             # hidden_size*4 x 8 x 8
             
-        self.mean = nn.Sequential(
+        self.x_to_mu = nn.Sequential(
             nn.Linear(representation_size*4*8*8, 2048),
             nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Linear(2048, self.output_channels))
         
-        self.logvar = nn.Sequential(
-            nn.Linear(opt.representation_size*4*8*8, 2048),
+        self.x_to_logvar = nn.Sequential(
+            nn.Linear(representation_size*4*8*8, 2048),
             nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Linear(2048, self.output_channels))
@@ -318,8 +318,9 @@ class Encoder_celeba(nn.Module):
         return z, kld
 
     def forward(self, x):
-        x = self.resnet(x).squeeze()
-        z, kld = self.reparameterize(x)
+        batch_size = x.size()[0]
+        x = self.features(x).squeeze()
+        z, kld = self.reparameterize(x.view(batch_size, -1))
         return z, kld
 
 
@@ -327,18 +328,18 @@ class Generator_celeba(nn.Module):
     def __init__(self, opt):
         super(Generator_celeba, self).__init__()
 
-        self.input_size = opt.input_size
-        self.representation_size = opt.representation_size
+        self.input_size = 64
+        self.representation_size = opt.n_z
 
-        dim = representation_size[0] * representation_size[1] * representation_size[2]
+        dim = self.representation_size[0] * self.representation_size[1] * self.representation_size[2]
 
         self.preprocess = nn.Sequential(
-            nn.Linear(input_size, dim),
+            nn.Linear(self.input_size, dim),
             nn.BatchNorm1d(dim),
             nn.ReLU())
         
             # 256 x 8 x 8
-        self.deconv1 = nn.ConvTranspose2d(representation_size[0], 256, 5, stride=2, padding=2)
+        self.deconv1 = nn.ConvTranspose2d(self.representation_size[0], 256, 5, stride=2, padding=2)
         self.act1 = nn.Sequential(nn.BatchNorm2d(256),
                                   nn.ReLU())
             # 256 x 16 x 16
@@ -377,8 +378,8 @@ class Discriminator_celeba(nn.Module):
     def __init__(self, opt):
         super(Discriminator_celeba, self).__init__()
 
-        self.representation_size = opt.representation_size
-        dim = representation_size[0] * representation_size[1] * representation_size[2]
+        self.representation_size = opt.n_z
+        dim = self.representation_size[0] * self.representation_size[1] * self.representation_size[2]
         
         self.convs = nn.Sequential(
             nn.Conv2d(opt.input_channels, 32, 5, stride=1, padding=2),
@@ -403,8 +404,9 @@ class Discriminator_celeba(nn.Module):
             nn.Sigmoid())
 
     def forward(self, x):
+        batch_size = x.size()[0]
         f_d = self.convs(x)
-        x = self.lth_features(f_d)
-        f_d = self.sigmoid_output(f_d)
+        x = self.lth_features(f_d.view(batch_size, -1))
+        f_d = self.sigmoid_output(x)
 
-        return x.squeeze(), f_d.squeeze()
+        return f_d.squeeze(), x.squeeze()

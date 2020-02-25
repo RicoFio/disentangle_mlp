@@ -27,9 +27,9 @@ def get_data_loader(opt):
             transforms.ToTensor(),
             normalize_mnist
         ])
-        train_loader = DataLoader(datasets.MNIST('./data/mnist', train=True, download=True, transform=my_transform),
+        train_loader = DataLoader(datasets.MNIST(opt.image_root, train=True, download=True, transform=my_transform),
                                     batch_size=opt.batch_size, shuffle=True)
-        test_loader = DataLoader(datasets.MNIST('./data/mnist', train=False, download=False, transform=my_transform),
+        test_loader = DataLoader(datasets.MNIST(opt.image_root, train=False, download=False, transform=my_transform),
                                     batch_size=opt.batch_size, shuffle=True)
 
     elif opt.dataset == "celebA":

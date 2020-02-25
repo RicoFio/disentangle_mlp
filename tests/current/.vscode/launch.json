@@ -11,6 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
+                "--image_root", "./data/celebA/img_align_celeba",
                 "--dataset", "celebA",
                 "--batch_size", "64",
                 "--epochs", "250",
