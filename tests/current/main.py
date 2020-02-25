@@ -11,6 +11,8 @@ from dataset import get_data_loader
 import torchvision.utils as utils
 import argparse
 
+from matplotlib import pyplot as plt
+
 import torchvision.models
 from torchvision.models.resnet import model_urls
 
@@ -87,7 +89,15 @@ elif opt.dataset == "celebA":
     D = get_cuda(Discriminator_celeba(opt)).apply(weights_init)
 
 device_ids = list(range(T.cuda.device_count()))
-print(device_ids)
+
+for device in device_ids:
+    if device.type == 'cuda':
+        print(T.cuda.get_device_name(0))
+        print('Memory Usage:')
+        print('Allocated:', round(T.cuda.memory_allocated(0)/1024**3,1), 'GB')
+        print('Cached:   ', round(T.cuda.memory_cached(0)/1024**3,1), 'GB')
+        print('\n')
+
 E = nn.DataParallel(E, device_ids)
 G = nn.DataParallel(G, device_ids)
 D = nn.DataParallel(D, device_ids)
@@ -167,7 +177,9 @@ def training():
         T_loss_GD = []
         T_loss_kld = []
 
-        for x, _ in train_loader:
+        for x, _ in tqdm(train_loader):
+            #plt.imshow(np.transpose(utils.make_grid(x[0][:64], padding=2, normalize=True).cpu(),(1,2,0)))
+            #plt.show()
             x = get_cuda(x)
             loss_D, loss_G, loss_GD, loss_kld = train_batch(x)
             T_loss_D.append(loss_D)
@@ -176,10 +188,10 @@ def training():
             T_loss_kld.append(loss_kld)
 
 
-        T_loss_D = T.mean(T_loss_D)
-        T_loss_G = T.mean(T_loss_G)
-        T_loss_GD = T.mean(T_loss_GD)
-        T_loss_kld = T.mean(T_loss_kld)
+        T_loss_D = np.mean(T_loss_D)
+        T_loss_G = np.mean(T_loss_G)
+        T_loss_GD = np.mean(T_loss_GD)
+        T_loss_kld = np.mean(T_loss_kld)
 
         print("epoch:", epoch, "loss_D:", "%.4f"%T_loss_D, "loss_G:", "%.4f"%T_loss_G, "loss_GD:", "%.4f"%T_loss_GD, "loss_kld:", "%.4f"%T_loss_kld)
 
