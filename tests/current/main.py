@@ -196,7 +196,7 @@ def training():
 
 
 def generate_samples(img_name):
-    z_p = T.randn(opt.n_samples, opt.n_z)
+    z_p = T.randn(opt.n_samples, 64)
     z_p = get_cuda(z_p)
     E.eval()
     G.eval()
