@@ -167,7 +167,7 @@ def training():
         T_loss_GD = []
         T_loss_kld = []
 
-        for x, _ in train_loader:
+        for x, _ in tqdm(train_loader):
             x = get_cuda(x)
             loss_D, loss_G, loss_GD, loss_kld = train_batch(x)
             T_loss_D.append(loss_D)
@@ -176,10 +176,10 @@ def training():
             T_loss_kld.append(loss_kld)
 
 
-        T_loss_D = T.mean(T_loss_D)
-        T_loss_G = T.mean(T_loss_G)
-        T_loss_GD = T.mean(T_loss_GD)
-        T_loss_kld = T.mean(T_loss_kld)
+        T_loss_D = np.mean(T_loss_D)
+        T_loss_G = np.mean(T_loss_G)
+        T_loss_GD = np.mean(T_loss_GD)
+        T_loss_kld = np.mean(T_loss_kld)
 
         print("epoch:", epoch, "loss_D:", "%.4f"%T_loss_D, "loss_G:", "%.4f"%T_loss_G, "loss_GD:", "%.4f"%T_loss_GD, "loss_kld:", "%.4f"%T_loss_kld)
 
