@@ -65,7 +65,7 @@ class Generator_birds(nn.Module):
 
 
 class Discriminator_birds(nn.Module):
-    def __init__(self):
+    def __init__(self, opt):
         super(Discriminator_birds, self).__init__()
         self.convs = nn.Sequential(
             nn.Conv2d(3, 64, 4, 2, 1, bias=False),
@@ -153,7 +153,7 @@ class Generator_mnist(nn.Module):
 
 
 class Discriminator_mnist(nn.Module):
-    def __init__(self):
+    def __init__(self, opt):
         super(Discriminator_mnist, self).__init__()
         
         self.main = nn.Sequential(OrderedDict([
@@ -239,7 +239,7 @@ class Generator_mnist_test(nn.Module):
 
 
 class Discriminator_mnist_test(nn.Module):
-    def __init__(self):
+    def __init__(self, opt):
         super(Discriminator_mnist_test, self).__init__()
         #self.convs = nn.Sequential(
         self.conv1 = nn.Conv2d(1, 64, 4, 2, 1, bias=False)
@@ -273,23 +273,40 @@ class Discriminator_mnist_test(nn.Module):
         f_d = F.avg_pool2d(f_d, 3, 1, 0)
         return x.squeeze(), f_d.squeeze()
 
-# Hyperparameters for lfw
-# Epoch size 250
-# Batch size 64
-# Img size 64
-# ? Crop size 150
-# Recon VS gan weight 1e-6
-# Real VS gan weight 0.33
-# discriminate ae recon False
-# Discriminate sample z True
 
 class Encoder_celeba(nn.Module):
-    def __init__(self, opt):
+    def __init__(self, opt, representation_size=64):
         super(Encoder_celeba, self).__init__()
 
-        # TODO
-        self.x_to_mu = None
-        self.x_to_logvar = None
+        self.input_channels = opt.input_channels
+        self.output_channels = opt.output_channels
+        
+        self.features = nn.Sequential(
+            # nc x 64 x 64
+            nn.Conv2d(self.input_channels, representation_size, 5, stride=2, padding=2),
+            nn.BatchNorm2d(representation_size),
+            nn.ReLU(),
+            # hidden_size x 32 x 32
+            nn.Conv2d(representation_size, representation_size*2, 5, stride=2, padding=2),
+            nn.BatchNorm2d(representation_size * 2),
+            nn.ReLU(),
+            # hidden_size*2 x 16 x 16
+            nn.Conv2d(representation_size*2, representation_size*4, 5, stride=2, padding=2),
+            nn.BatchNorm2d(representation_size * 4),
+            nn.ReLU())
+            # hidden_size*4 x 8 x 8
+            
+        self.mean = nn.Sequential(
+            nn.Linear(representation_size*4*8*8, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, self.output_channels))
+        
+        self.logvar = nn.Sequential(
+            nn.Linear(opt.representation_size*4*8*8, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, self.output_channels))
 
     def reparameterize(self, x):
         mu = self.x_to_mu(x)
@@ -310,32 +327,84 @@ class Generator_celeba(nn.Module):
     def __init__(self, opt):
         super(Generator_celeba, self).__init__()
 
-        # TODO
-        self.convs = nn.Sequential(
-        )
+        self.input_size = opt.input_size
+        self.representation_size = opt.representation_size
 
+        dim = representation_size[0] * representation_size[1] * representation_size[2]
 
-    def forward(self, z):
-        z = z.view(z.size(0), z.size(1), 1, 1)
-        x_gen = self.convs(z)
-        return x_gen
+        self.preprocess = nn.Sequential(
+            nn.Linear(input_size, dim),
+            nn.BatchNorm1d(dim),
+            nn.ReLU())
+        
+            # 256 x 8 x 8
+        self.deconv1 = nn.ConvTranspose2d(representation_size[0], 256, 5, stride=2, padding=2)
+        self.act1 = nn.Sequential(nn.BatchNorm2d(256),
+                                  nn.ReLU())
+            # 256 x 16 x 16
+        self.deconv2 = nn.ConvTranspose2d(256, 128, 5, stride=2, padding=2)
+        self.act2 = nn.Sequential(nn.BatchNorm2d(128),
+                                  nn.ReLU())
+            # 128 x 32 x 32
+        self.deconv3 = nn.ConvTranspose2d(128, 32, 5, stride=2, padding=2)
+        self.act3 = nn.Sequential(nn.BatchNorm2d(32),
+                                  nn.ReLU())
+            # 32 x 64 x 64
+        self.deconv4 = nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2)
+            # 3 x 64 x 64
+        self.activation = nn.Tanh()
+            
+    
+    def forward(self, code):
+        bs = code.size()[0]
+        preprocessed_codes = self.preprocess(code)
+        preprocessed_codes = preprocessed_codes.view(-1,
+                                                     self.representation_size[0],
+                                                     self.representation_size[1],
+                                                     self.representation_size[2])
+        output = self.deconv1(preprocessed_codes, output_size=(bs, 256, 16, 16))
+        output = self.act1(output)
+        output = self.deconv2(output, output_size=(bs, 128, 32, 32))
+        output = self.act2(output)
+        output = self.deconv3(output, output_size=(bs, 32, 64, 64))
+        output = self.act3(output)
+        output = self.deconv4(output, output_size=(bs, 3, 64, 64))
+        output = self.activation(output)
+        return output
 
 
 class Discriminator_celeba(nn.Module):
-    def __init__(self):
+    def __init__(self, opt):
         super(Discriminator_celeba, self).__init__()
 
-        # TODO
+        self.representation_size = opt.representation_size
+        dim = representation_size[0] * representation_size[1] * representation_size[2]
+        
         self.convs = nn.Sequential(
-        )
-
-        # TODO
-        self.last_conv = nn.Sequential(
-        )
+            nn.Conv2d(opt.input_channels, 32, 5, stride=1, padding=2),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(32, 128, 5, stride=2, padding=2),
+            nn.BatchNorm2d(128),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(128, 256, 5, stride=2, padding=2),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2),
+            nn.Conv2d(256, 256, 5, stride=2, padding=2),
+            nn.BatchNorm2d(256),
+            nn.LeakyReLU(0.2))
+        
+        self.lth_features = nn.Sequential(
+            nn.Linear(dim, 2048),
+            nn.LeakyReLU(0.2))
+        
+        self.sigmoid_output = nn.Sequential(
+            nn.Linear(2048, 1),
+            nn.Sigmoid())
 
     def forward(self, x):
-
         f_d = self.convs(x)
-        x = self.last_conv(f_d)
-        f_d = F.avg_pool2d(f_d, 4, 1, 0)
+        x = self.lth_features(f_d)
+        f_d = self.sigmoid_output(f_d)
+
         return x.squeeze(), f_d.squeeze()

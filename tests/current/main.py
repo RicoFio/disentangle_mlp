@@ -23,6 +23,16 @@ save_path = "data/saved_models/saved_model.tar"
 if not os.path.exists("data/saved_models"):
     os.makedirs("data/saved_models")
 
+# Hyperparameters for lfw
+## Epoch size 250
+## Batch size 64
+## Img size 64
+## ? Crop size 150
+## Recon VS gan weight 1e-6
+## Real VS gan weight 0.33
+## discriminate ae recon False
+## Discriminate sample z True
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default="birds")
 parser.add_argument('--image_root', type=str, default="./data")
@@ -34,6 +44,9 @@ parser.add_argument('--lr_d', type=float, default=0.0002)
 parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=36)
 parser.add_argument('--n_z', type=int, default=200)
+parser.add_argument('--representation_size', type=int, nargs='+', default=[])
+parser.add_argument('--input_channels', type=int, default=3)
+parser.add_argument('--output_channels', type=int, default=64)
 parser.add_argument('--img_size', type=int, default=128)
 parser.add_argument('--w_kld', type=float, default=1)
 parser.add_argument('--w_loss_g', type=float, default=0.01)
@@ -62,15 +75,18 @@ train_loader = get_data_loader(opt)
 if opt.dataset == "birds":
     E = get_cuda(Encoder_birds(opt))
     G = get_cuda(Generator_birds(opt)).apply(weights_init)
-    D = get_cuda(Discriminator_birds()).apply(weights_init)
+    D = get_cuda(Discriminator_birds(opt)).apply(weights_init)
 
 elif opt.dataset == "mnist":
     E = get_cuda(Encoder_mnist_test(opt))
     G = get_cuda(Generator_mnist_test(opt)).apply(weights_init)
-    D = get_cuda(Discriminator_mnist_test()).apply(weights_init)
+    D = get_cuda(Discriminator_mnist_test(opt)).apply(weights_init)
 
 elif opt.dataset == "celebA":
-    raise NotImplementedError
+    opt.representation_size = list(opt.representation_size)
+    E = get_cuda(Encoder_mnist_test(opt))
+    G = get_cuda(Generator_mnist_test(opt)).apply(weights_init)
+    D = get_cuda(Discriminator_mnist_test(opt)).apply(weights_init)
 
 device_ids = list(range(T.cuda.device_count()))
 print(device_ids)

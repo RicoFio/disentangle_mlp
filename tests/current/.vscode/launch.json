@@ -11,10 +11,10 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "--dataset", "mnist",
-                "--batch_size", "128",
-                "--epochs", "10",
-                "--img_size", "28"
+                "--dataset", "celebA",
+                "--batch_size", "64",
+                "--epochs", "250",
+                "--img_size", "64"
             ]
         }
     ]
