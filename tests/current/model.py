@@ -313,11 +313,13 @@ class Encoder_celeba(nn.Module):
 
     def reparameterize(self, x):
         mu = self.x_to_mu(x)
+        mu = self.get_cuda(mu)
         logvar = self.x_to_logvar(x)
+        logvar = self.get_cuda(mu)
         z = T.randn(mu.size())
         z = self.get_cuda(z)
-        z = mu + z * T.exp(0.5 * logvar)
-        kld = (-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1))
+        z = mu + z * self.get_cuda(T.exp(0.5 * logvar))
+        kld = self.get_cuda((-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)))
         return z, kld
 
     def forward(self, x):
