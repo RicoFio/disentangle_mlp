@@ -74,18 +74,24 @@ if T.cuda.is_available():
 
 train_loader, _ = get_data_loader(opt)
 
+def get_cuda(tensor):
+    global device
+    if T.cuda.is_available():
+        tensor = tensor.to(device)
+    return tensor
+
 if opt.dataset == "birds":
-    E = get_cuda(Encoder_birds(opt))
+    E = get_cuda(Encoder_birds(opt, get_cuda))
     G = get_cuda(Generator_birds(opt)).apply(weights_init)
     D = get_cuda(Discriminator_birds(opt)).apply(weights_init)
 
 elif opt.dataset == "mnist":
-    E = get_cuda(Encoder_mnist_test(opt))
+    E = get_cuda(Encoder_mnist_test(opt, get_cuda))
     G = get_cuda(Generator_mnist_test(opt)).apply(weights_init)
     D = get_cuda(Discriminator_mnist_test(opt)).apply(weights_init)
 
 elif opt.dataset == "celebA":
-    E = Encoder_celeba(opt)
+    E = Encoder_celeba(opt, get_cuda)
     G = Generator_celeba(opt).apply(weights_init)
     D = Discriminator_celeba(opt).apply(weights_init)
 
@@ -117,12 +123,6 @@ D = nn.DataParallel(D).to(device)
 E_trainer = T.optim.Adam(E.parameters(), lr=opt.lr_e)
 G_trainer = T.optim.Adam(G.parameters(), lr=opt.lr_g, betas=(0.5, 0.999))
 D_trainer = T.optim.Adam(D.parameters(), lr=opt.lr_d, betas=(0.5, 0.999))
-
-def get_cuda(tensor):
-    global device
-    if T.cuda.is_available():
-        tensor = tensor.to(device)
-    return tensor
 
 def train_batch(x_r):
     batch_size = x_r.size(0)

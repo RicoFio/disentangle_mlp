@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from collections import OrderedDict
 
 class Encoder_birds(nn.Module):
-    def __init__(self, opt):
+    def __init__(self, opt, get_cuda):
         super(Encoder_birds, self).__init__()
         self.resnet = models.resnet18(pretrained=True)
         self.resnet.avgpool = nn.AvgPool2d(4,1,0)
@@ -15,11 +15,13 @@ class Encoder_birds(nn.Module):
         self.x_to_mu = nn.Linear(512,opt.n_z)
         self.x_to_logvar = nn.Linear(512, opt.n_z)
 
+        self.get_cuda = get_cuda
+
     def reparameterize(self, x):
         mu = self.x_to_mu(x)
         logvar = self.x_to_logvar(x)
         z = T.randn(mu.size())
-        z = z
+        z = self.get_cuda(z)
         z = mu + z * T.exp(0.5 * logvar)
         kld = (-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1))
         return z, kld
@@ -93,7 +95,7 @@ class Discriminator_birds(nn.Module):
 
 
 class Encoder_mnist(nn.Module):
-    def __init__(self, opt):
+    def __init__(self, opt, get_cuda):
         super(Encoder_mnist, self).__init__()
 
         self.features = nn.Sequential(OrderedDict([
@@ -117,11 +119,13 @@ class Encoder_mnist(nn.Module):
             ('pool1', nn.MaxPool2d(2, 2))
             ]))
 
+        self.get_cuda = get_cuda
+
     def reparameterize(self, x):
         mu = self.mean(x).flatten()
         logvar = self.logvar(x).flatten()
         z = T.randn(mu.size())
-        z = z
+        z = self.get_cuda(z)
         z = mu + z * T.exp(0.5 * logvar)
         kld = (-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 0))
         return z, kld
@@ -176,7 +180,7 @@ class Discriminator_mnist(nn.Module):
 
 
 class Encoder_mnist_test(nn.Module):
-    def __init__(self, opt):
+    def __init__(self, opt, get_cuda):
         super(Encoder_mnist_test, self).__init__()
         self.resnet = models.resnet18(pretrained=True)
         self.resnet.conv1 = nn.Conv2d(1, 64, kernel_size=2, stride=2, padding=40,
@@ -187,11 +191,13 @@ class Encoder_mnist_test(nn.Module):
         self.x_to_mu = nn.Linear(512,opt.n_z)
         self.x_to_logvar = nn.Linear(512, opt.n_z)
 
+        self.get_cuda = get_cuda
+
     def reparameterize(self, x):
         mu = self.x_to_mu(x) 
         logvar = self.x_to_logvar(x)
         z = T.randn(mu.size())
-        z = z
+        z = self.get_cuda(z)
         z = mu + z * T.exp(0.5 * logvar)
         kld = (-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1))
         return z, kld
@@ -270,7 +276,7 @@ class Discriminator_mnist_test(nn.Module):
 
 
 class Encoder_celeba(nn.Module):
-    def __init__(self, opt, representation_size=64):
+    def __init__(self, opt, get_cuda, representation_size=64):
         super(Encoder_celeba, self).__init__()
 
         self.input_channels = opt.input_channels
@@ -302,12 +308,14 @@ class Encoder_celeba(nn.Module):
             nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Linear(2048, self.output_channels))
+        
+        self.get_cuda = get_cuda
 
     def reparameterize(self, x):
         mu = self.x_to_mu(x)
         logvar = self.x_to_logvar(x)
         z = T.randn(mu.size())
-        z = z
+        z = self.get_cuda(z)
         z = mu + z * T.exp(0.5 * logvar)
         kld = (-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1))
         return z, kld
