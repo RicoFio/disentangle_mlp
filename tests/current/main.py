@@ -88,9 +88,9 @@ elif opt.dataset == "celebA":
     G = get_cuda(Generator_celeba(opt)).apply(weights_init)
     D = get_cuda(Discriminator_celeba(opt)).apply(weights_init)
 
-device_ids = list(range(T.cuda.device_count()))
+device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
 
-for device in device_ids:
+for device in device:
     if device.type == 'cuda':
         print(T.cuda.get_device_name(0))
         print('Memory Usage:')
@@ -98,9 +98,9 @@ for device in device_ids:
         print('Cached:   ', round(T.cuda.memory_cached(0)/1024**3,1), 'GB')
         print('\n')
 
-E = nn.DataParallel(E, device_ids)
-G = nn.DataParallel(G, device_ids)
-D = nn.DataParallel(D, device_ids)
+E = nn.DataParallel(E).to(device)
+G = nn.DataParallel(G).to(device)
+D = nn.DataParallel(D).to(device)
 
 E_trainer = T.optim.Adam(E.parameters(), lr=opt.lr_e)
 G_trainer = T.optim.Adam(G.parameters(), lr=opt.lr_g, betas=(0.5, 0.999))
@@ -116,13 +116,13 @@ def train_batch(x_r):
     z, kld = E(x_r)
     kld = kld.mean()
     #Extract fake images corresponding to real images
-    x_f = G(z)
+    x_f = get_cuda(G(z))
 
     #Extract latent_z corresponding to noise
     z_p = T.randn(batch_size, 64) #was opt.n_z
     z_p = get_cuda(z_p)
     #Extract fake images corresponding to noise
-    x_p = G(z_p)
+    x_p = get_cuda(G(z_p))
 
     #Compute D(x) for real and fake images along with their features
     ld_r, fd_r = D(x_r)
