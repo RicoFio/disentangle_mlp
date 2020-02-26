@@ -8,6 +8,7 @@ from model import *
 import random
 from helper_functions import *
 from dataset import get_data_loader
+from dataset import *
 import torchvision.utils as utils
 import argparse
 
@@ -84,18 +85,30 @@ elif opt.dataset == "mnist":
     D = get_cuda(Discriminator_mnist_test(opt)).apply(weights_init)
 
 elif opt.dataset == "celebA":
-    E = get_cuda(Encoder_celeba(opt))
-    G = get_cuda(Generator_celeba(opt)).apply(weights_init)
-    D = get_cuda(Discriminator_celeba(opt)).apply(weights_init)
+    E = Encoder_celeba(opt)
+    G = Generator_celeba(opt).apply(weights_init)
+    D = Discriminator_celeba(opt).apply(weights_init)
 
-device = T.device("cuda:0,1,2,3" if T.cuda.is_available() else "cpu")
+device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
 
-if device.type == 'cuda':
-    print(T.cuda.get_device_name(0))
-    print('Memory Usage:')
-    print('Allocated:', round(T.cuda.memory_allocated(0)/1024**3,1), 'GB')
-    print('Cached:   ', round(T.cuda.memory_cached(0)/1024**3,1), 'GB')
-    print('\n')
+if T.cuda.device_count() > 1:
+    print("Let's use", T.cuda.device_count(), "GPUs!")
+    print("Running Test")
+    test_input_size = 5
+    test_output_size = 2
+    test_data_size = 100
+    test_batch_size = 30
+    rand_loader = T.utils.data.DataLoader(dataset=RandomDataset(test_input_size, test_data_size),
+                            batch_size=test_batch_size, shuffle=True)
+    model = Test_Model(test_input_size, test_output_size)
+    model = nn.DataParallel(model)
+    model.to(device)
+    for data in rand_loader:
+        test_input = data.to(device)
+        output = model(test_input)
+        print("Outside: input size", test_input.size(),
+            "output_size", output.size())
+    print("######################\n")
 
 E = nn.DataParallel(E).to(device)
 G = nn.DataParallel(G).to(device)

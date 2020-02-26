@@ -4,6 +4,7 @@ import torchvision.transforms as transforms
 import random
 from torch.utils.data.sampler import SubsetRandomSampler
 from torch.utils.data import DataLoader
+import torch
 
 normalize_birds = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                        std=[0.229, 0.224, 0.225])
@@ -44,3 +45,15 @@ def get_data_loader(opt):
         test_loader = None
 
     return train_loader, test_loader
+
+class RandomDataset(Dataset):
+
+    def __init__(self, size, length):
+        self.len = length
+        self.data = torch.randn(length, size)
+
+    def __getitem__(self, index):
+        return self.data[index]
+
+    def __len__(self):
+        return self.len
