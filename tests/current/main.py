@@ -116,9 +116,13 @@ if T.cuda.device_count() > 1:
             "output_size", output.size())
     print("######################\n")
 
-E = nn.DataParallel(E).to(device)
-G = nn.DataParallel(G).to(device)
-D = nn.DataParallel(D).to(device)
+E = nn.DataParallel(E)
+G = nn.DataParallel(G)
+D = nn.DataParallel(D)
+
+E.to(device)
+G.to(device)
+D.to(device)
 
 E_trainer = T.optim.Adam(E.parameters(), lr=opt.lr_e)
 G_trainer = T.optim.Adam(G.parameters(), lr=opt.lr_g, betas=(0.5, 0.999))
