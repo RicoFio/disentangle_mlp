@@ -308,14 +308,18 @@ class Encoder_celeba(nn.Module):
             nn.BatchNorm1d(2048),
             nn.ReLU(),
             nn.Linear(2048, self.output_channels))
-
+        
+        self.get_cuda = get_cuda
 
     def reparameterize(self, x):
         mu = self.x_to_mu(x)
+        mu = self.get_cuda(mu)
         logvar = self.x_to_logvar(x)
+        logvar = self.get_cuda(mu)
         z = T.randn(mu.size())
-        z = mu + z * T.exp(0.5 * logvar)
-        kld = (-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1))
+        z = self.get_cuda(z)
+        z = mu + z * self.get_cuda(T.exp(0.5 * logvar))
+        kld = self.get_cuda((-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1)))
         return z, kld
 
     def forward(self, x):
