@@ -19,7 +19,7 @@ class Encoder_birds(nn.Module):
         mu = self.x_to_mu(x)
         logvar = self.x_to_logvar(x)
         z = T.randn(mu.size())
-        z = get_cuda(z)
+        z = z
         z = mu + z * T.exp(0.5 * logvar)
         kld = (-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1))
         return z, kld
@@ -121,7 +121,7 @@ class Encoder_mnist(nn.Module):
         mu = self.mean(x).flatten()
         logvar = self.logvar(x).flatten()
         z = T.randn(mu.size())
-        z = get_cuda(z)
+        z = z
         z = mu + z * T.exp(0.5 * logvar)
         kld = (-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 0))
         return z, kld
@@ -191,7 +191,7 @@ class Encoder_mnist_test(nn.Module):
         mu = self.x_to_mu(x) 
         logvar = self.x_to_logvar(x)
         z = T.randn(mu.size())
-        z = get_cuda(z)
+        z = z
         z = mu + z * T.exp(0.5 * logvar)
         kld = (-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1))
         return z, kld
@@ -307,7 +307,7 @@ class Encoder_celeba(nn.Module):
         mu = self.x_to_mu(x)
         logvar = self.x_to_logvar(x)
         z = T.randn(mu.size())
-        z = get_cuda(z)
+        z = z
         z = mu + z * T.exp(0.5 * logvar)
         kld = (-0.5 * T.sum(1 + logvar - mu.pow(2) - logvar.exp(), 1))
         return z, kld

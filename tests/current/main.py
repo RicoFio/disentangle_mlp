@@ -124,7 +124,6 @@ def get_cuda(tensor):
         tensor = tensor.to(device)
     return tensor
 
-
 def train_batch(x_r):
     batch_size = x_r.size(0)
     y_real = get_cuda(T.ones(batch_size))
