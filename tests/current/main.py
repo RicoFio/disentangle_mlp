@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
+#os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 import torch as T
 import torch.nn as nn
@@ -88,15 +88,14 @@ elif opt.dataset == "celebA":
     G = get_cuda(Generator_celeba(opt)).apply(weights_init)
     D = get_cuda(Discriminator_celeba(opt)).apply(weights_init)
 
-device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
+device = T.device("cuda:0,1,2,3" if T.cuda.is_available() else "cpu")
 
-for device in device:
-    if device.type == 'cuda':
-        print(T.cuda.get_device_name(0))
-        print('Memory Usage:')
-        print('Allocated:', round(T.cuda.memory_allocated(0)/1024**3,1), 'GB')
-        print('Cached:   ', round(T.cuda.memory_cached(0)/1024**3,1), 'GB')
-        print('\n')
+if device.type == 'cuda':
+    print(T.cuda.get_device_name(0))
+    print('Memory Usage:')
+    print('Allocated:', round(T.cuda.memory_allocated(0)/1024**3,1), 'GB')
+    print('Cached:   ', round(T.cuda.memory_cached(0)/1024**3,1), 'GB')
+    print('\n')
 
 E = nn.DataParallel(E).to(device)
 G = nn.DataParallel(G).to(device)
