@@ -118,6 +118,12 @@ E_trainer = T.optim.Adam(E.parameters(), lr=opt.lr_e)
 G_trainer = T.optim.Adam(G.parameters(), lr=opt.lr_g, betas=(0.5, 0.999))
 D_trainer = T.optim.Adam(D.parameters(), lr=opt.lr_d, betas=(0.5, 0.999))
 
+def get_cuda(tensor):
+    global device
+    if T.cuda.is_available():
+        tensor = tensor.to(device)
+    return tensor
+
 
 def train_batch(x_r):
     batch_size = x_r.size(0)

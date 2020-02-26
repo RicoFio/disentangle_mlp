@@ -5,11 +5,6 @@ import torch.nn.functional as F
 
 from collections import OrderedDict
 
-def get_cuda(tensor):
-    if T.cuda.is_available():
-        tensor = tensor.cuda()
-    return tensor
-
 class Encoder_birds(nn.Module):
     def __init__(self, opt):
         super(Encoder_birds, self).__init__()
@@ -410,3 +405,17 @@ class Discriminator_celeba(nn.Module):
         f_d = self.sigmoid_output(x)
 
         return f_d.squeeze(), x.squeeze()
+
+class Test_Model(nn.Module):
+    # Our model
+
+    def __init__(self, input_size, output_size):
+        super(Test_Model, self).__init__()
+        self.fc = nn.Linear(input_size, output_size)
+
+    def forward(self, input):
+        output = self.fc(input)
+        print("\tIn Model: input size", input.size(),
+              "output size", output.size())
+
+        return output
