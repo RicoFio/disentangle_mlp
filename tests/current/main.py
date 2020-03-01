@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 import torchvision.models
 from torchvision.models.resnet import model_urls
 
-model_urls['resnet18'] = model_urls['resnet18'].replace('https://', 'http://')
+#model_urls['resnet18'] = model_urls['resnet18'].replace('https://', 'http://')
 
 from tqdm import tqdm
 
@@ -40,14 +40,14 @@ if not os.path.exists("data/saved_models"):
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default="birds")
 parser.add_argument('--image_root', type=str, default="./data")
-parser.add_argument('--batch_size', type=int, default=256)
-parser.add_argument('--epochs', type=int, default=150)
-parser.add_argument('--lr_e', type=float, default=0.0003)
-parser.add_argument('--lr_g', type=float, default=0.0003)
-parser.add_argument('--lr_d', type=float, default=0.0003)
+parser.add_argument('--batch_size', type=int, default=64)
+parser.add_argument('--epochs', type=int, default=101)
+parser.add_argument('--lr_e', type=float, default=0.0002)
+parser.add_argument('--lr_g', type=float, default=0.0002)
+parser.add_argument('--lr_d', type=float, default=0.0002)
 parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=36)
-parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8]) # n_z
+parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8])
 parser.add_argument('--input_channels', type=int, default=3)
 parser.add_argument('--n_hidden', type=int, default=128)
 parser.add_argument('--img_size', type=int, default=64)
@@ -112,6 +112,10 @@ elif opt.dataset == "celebA":
 #     print("######################\n")
 
 
+E.to(device)
+G.to(device)
+D.to(device)
+
 E = nn.DataParallel(E)
 G = nn.DataParallel(G)
 D = nn.DataParallel(D)
@@ -129,6 +133,17 @@ def train_batch(x_r):
     #Extract latent_z corresponding to real images
     z, kld = E(x_r)
     kld = kld.mean()
+
+
+    ## Train with all-real batch
+    D_trainer.zero_grad()
+    ld_r, fd_r = D(x_r)
+    loss_D_real = F.binary_cross_entropy(ld_r, y_real)
+    loss_D_real.backward(retain_graph=True)
+    print(loss_D_real)
+
+    ## Train with all-fake batch
+
     #Extract fake images corresponding to real images
     x_f = G(z).to(device)
 
@@ -137,15 +152,20 @@ def train_batch(x_r):
     #Extract fake images corresponding to noise
     x_p = G(z_p).to(device)
 
-    #Compute D(x) for real and fake images along with their features
-    ld_r, fd_r = D(x_r)
-    ld_f, fd_f = D(x_f)
-    ld_p, fd_p = D(x_p)
+    #Compute D(x) for real and noise 
+    ld_f, fd_f = D(x_f.detach())
+    ld_p, fd_p = D(x_p.detach())
+
+    loss_D_fake = (F.binary_cross_entropy(ld_f, y_fake) + F.binary_cross_entropy(ld_p, y_fake))
+
+    loss_D_fake.backward(retain_graph=True)
+    print(loss_D_fake)
+    loss_D = loss_D_real + loss_D_fake
 
     #------------D training------------------
-    loss_D = F.binary_cross_entropy(ld_r, y_real) + 0.5*(F.binary_cross_entropy(ld_f, y_fake) + F.binary_cross_entropy(ld_p, y_fake))
-    D_trainer.zero_grad()
-    loss_D.backward(retain_graph = True)
+    # loss_D = F.binary_cross_entropy(ld_r, y_real) + 0.5*(F.binary_cross_entropy(ld_f, y_fake) + F.binary_cross_entropy(ld_p, y_fake))
+    # loss_D.backward(retain_graph = True)
+
     D_trainer.step()
 
     #------------E & G training--------------
@@ -153,11 +173,13 @@ def train_batch(x_r):
     #loss corresponding to -log(D(G(z_p)))
     loss_GD = F.binary_cross_entropy(ld_p, y_real)
     #pixel wise matching loss and discriminator's feature matching loss
-    loss_G = 0.5 * (0.01*(x_f - x_r).pow(2).sum() + (fd_f - fd_r.detach()).pow(2).sum()) / batch_size
+    loss_G = 0.5 * ((x_f - x_r).pow(2).sum() + (fd_f - fd_r.detach()).pow(2).sum()) / batch_size
 
     E_trainer.zero_grad()
     G_trainer.zero_grad()
-    (opt.w_kld*kld+opt.w_loss_g*loss_G+opt.w_loss_gd*loss_GD).backward()
+    total_loss =  (opt.w_kld*kld+opt.w_loss_g*loss_G+opt.w_loss_gd*loss_GD)
+    print(total_loss, "total loss")
+    total_loss.backward()
     E_trainer.step()
     G_trainer.step()
 
@@ -166,7 +188,7 @@ def train_batch(x_r):
 
 def load_model_from_checkpoint():
     global E, G, D, E_trainer, G_trainer, D_trainer
-    checkpoint = T.load(load_path)
+    checkpoint = T.load(save_path)
     E.load_state_dict(checkpoint['E_model'])
     G.load_state_dict(checkpoint['G_model'])
     D.load_state_dict(checkpoint['D_model'])
@@ -220,7 +242,7 @@ def training():
             'E_trainer': E_trainer.state_dict(),
             'G_trainer': G_trainer.state_dict(),
             'D_trainer': D_trainer.state_dict()
-        }, save_path + str(epoch) + '.tar')
+        }, save_path)
 
 
 def generate_samples(img_name):
