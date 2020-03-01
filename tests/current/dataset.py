@@ -3,7 +3,7 @@ from torchvision import datasets
 import torchvision.transforms as transforms
 import random
 from torch.utils.data.sampler import SubsetRandomSampler
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 import torch
 
 normalize_birds = transforms.Normalize(mean=[0.485, 0.456, 0.406],

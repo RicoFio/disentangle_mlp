@@ -21,7 +21,8 @@ model_urls['resnet18'] = model_urls['resnet18'].replace('https://', 'http://')
 
 from tqdm import tqdm
 
-save_path = "data/saved_models/saved_model.tar"
+save_path = "data/saved_models/saved_model_epoch_"
+load_path = "data/saved_models/saved_model.tar"
 
 if not os.path.exists("data/saved_models"):
     os.makedirs("data/saved_models")
@@ -174,7 +175,7 @@ def train_batch(x_r):
 
 def load_model_from_checkpoint():
     global E, G, D, E_trainer, G_trainer, D_trainer
-    checkpoint = T.load(save_path)
+    checkpoint = T.load(load_path)
     E.load_state_dict(checkpoint['E_model'])
     G.load_state_dict(checkpoint['G_model'])
     D.load_state_dict(checkpoint['D_model'])
@@ -225,7 +226,7 @@ def training():
             'E_trainer': E_trainer.state_dict(),
             'G_trainer': G_trainer.state_dict(),
             'D_trainer': D_trainer.state_dict()
-        }, save_path)
+        }, save_path + str(epoch) + '.tar')
 
 
 def generate_samples(img_name):
