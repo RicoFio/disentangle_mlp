@@ -49,7 +49,7 @@ parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=36)
 parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8]) # n_z
 parser.add_argument('--input_channels', type=int, default=3)
-parser.add_argument('--output_channels', type=int, default=64)
+parser.add_argument('--n_hidden', type=int, default=128)
 parser.add_argument('--img_size', type=int, default=64)
 parser.add_argument('--w_kld', type=float, default=1)
 parser.add_argument('--w_loss_g', type=float, default=0.01)
@@ -70,33 +70,27 @@ print(opt)
 manual_seed = random.randint(1, 10000)
 random.seed(manual_seed)
 T.manual_seed(manual_seed)
+
 if T.cuda.is_available():
     T.cuda.manual_seed_all(manual_seed)
 
 train_loader, _ = get_data_loader(opt)
-
-def get_cuda(tensor):
-    global device
-    if T.cuda.is_available():
-        tensor = tensor.to(device)
-    return tensor
+device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
 
 if opt.dataset == "birds":
-    E = get_cuda(Encoder_birds(opt, get_cuda))
-    G = get_cuda(Generator_birds(opt)).apply(weights_init)
-    D = get_cuda(Discriminator_birds(opt)).apply(weights_init)
+    E = Encoder_birds(opt, get_cuda).to(device)
+    G = Generator_birds(opt).to(device).apply(weights_init)
+    D = Discriminator_birds(opt).to(device).apply(weights_init)
 
 elif opt.dataset == "mnist":
-    E = get_cuda(Encoder_mnist_test(opt, get_cuda))
-    G = get_cuda(Generator_mnist_test(opt)).apply(weights_init)
-    D = get_cuda(Discriminator_mnist_test(opt)).apply(weights_init)
+    E = Encoder_mnist_test(opt).to(device)
+    G = Generator_mnist_test(opt).to(device).apply(weights_init)
+    D = Discriminator_mnist_test(opt).to(device).apply(weights_init)
 
 elif opt.dataset == "celebA":
-    E = Encoder_celeba(opt, get_cuda)
-    G = Generator_celeba(opt).apply(weights_init)
-    D = Discriminator_celeba(opt).apply(weights_init)
-
-device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
+    E = Encoder_celeba(opt).to(device)
+    G = Generator_celeba(opt).to(device).apply(weights_init)
+    D = Discriminator_celeba(opt).to(device).apply(weights_init)
 
 # if T.cuda.device_count() > 1:
 #     print("Let's use", T.cuda.device_count(), "GPUs!")
@@ -117,36 +111,31 @@ device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
 #             "output_size", output.size())
 #     print("######################\n")
 
-E.to(device)
-G.to(device)
-D.to(device)
-
 
 E = nn.DataParallel(E)
 G = nn.DataParallel(G)
 D = nn.DataParallel(D)
 
 
-E_trainer = T.optim.Adam(E.parameters(), lr=opt.lr_e)
-G_trainer = T.optim.Adam(G.parameters(), lr=opt.lr_g, betas=(0.5, 0.999))
-D_trainer = T.optim.Adam(D.parameters(), lr=opt.lr_d, betas=(0.5, 0.999))
+E_trainer = T.optim.RMSprpop(E.parameters(), lr=opt.lr_e, weight_decay=0.9, eps=1e-8)
+G_trainer = T.optim.RMSprop(G.parameters(), lr=opt.lr_g, weight_decay=0.9, eps=1e-8)
+D_trainer = T.optim.RMSprop(D.parameters(), lr=opt.lr_d, weight_decay=0.9, eps=1e-8)
 
 def train_batch(x_r):
     batch_size = x_r.size(0)
-    y_real = get_cuda(T.ones(batch_size))
-    y_fake = get_cuda(T.zeros(batch_size))
+    y_real = T.ones(batch_size).to(device)
+    y_fake = T.zeros(batch_size).to(device)
 
     #Extract latent_z corresponding to real images
     z, kld = E(x_r)
     kld = kld.mean()
     #Extract fake images corresponding to real images
-    x_f = get_cuda(G(z))
+    x_f = G(z).to(device)
 
     #Extract latent_z corresponding to noise
-    z_p = T.randn(batch_size, 64) #was opt.n_z
-    z_p = get_cuda(z_p)
+    z_p = T.randn(batch_size, opt.n_hidden).to(device)
     #Extract fake images corresponding to noise
-    x_p = get_cuda(G(z_p))
+    x_p = G(z_p).to(device)
 
     #Compute D(x) for real and fake images along with their features
     ld_r, fd_r = D(x_r)
@@ -204,7 +193,7 @@ def training():
         for x, _ in tqdm(train_loader):
             #plt.imshow(np.transpose(utils.make_grid(x[0][:64], padding=2, normalize=True).cpu(),(1,2,0)))
             #plt.show()
-            x = get_cuda(x)
+            x = x.to(device)
             loss_D, loss_G, loss_GD, loss_kld = train_batch(x)
             T_loss_D.append(loss_D)
             T_loss_G.append(loss_G)
@@ -232,8 +221,8 @@ def training():
 
 
 def generate_samples(img_name):
-    z_p = T.randn(opt.n_samples, 64)
-    z_p = get_cuda(z_p)
+    z_p = T.randn(opt.n_samples, opt.n_hidden)
+    z_p = z_p.to(device)
     E.eval()
     G.eval()
     D.eval()
