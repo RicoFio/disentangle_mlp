@@ -18,6 +18,7 @@ import matplotlib.animation as animation
 from IPython.display import HTML
 
 from dataset import *
+from main import *
 from model import *
 
 from tqdm import tqdm
