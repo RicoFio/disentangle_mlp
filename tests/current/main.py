@@ -208,7 +208,10 @@ def training():
 
         print("epoch:", epoch, "loss_D:", "%.4f"%T_loss_D, "loss_G:", "%.4f"%T_loss_G, "loss_GD:", "%.4f"%T_loss_GD, "loss_kld:", "%.4f"%T_loss_kld)
 
-        generate_samples("data/results/%d.jpg" % epoch)
+        for sample in range(opt.n_samples):
+            generate_samples("data/results/ " , str(epoch) ,  "-" , str(sample) ,".jpg" )
+
+
         T.save({
             'epoch': epoch + 1,
             "E_model": E.state_dict(),
@@ -221,7 +224,7 @@ def training():
 
 
 def generate_samples(img_name):
-    z_p = T.randn(opt.n_samples, opt.n_hidden)
+    z_p = T.randn(1, opt.n_hidden)
     z_p = z_p.to(device)
     E.eval()
     G.eval()
