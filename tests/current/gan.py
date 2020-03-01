@@ -110,6 +110,7 @@ def weights_init(m):
 
 
 dataloader, _ = get_data_loader(opt)
+device = torch.device("cuda:0" if T.cuda.is_available() else "cpu")
 
 # Create the generator
 netG = Generator_celeba(opt).to(device)
