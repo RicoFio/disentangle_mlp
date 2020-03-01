@@ -192,7 +192,7 @@ for epoch in range(num_epochs):
 
         ## Train with all-fake batch
         # Generate batch of latent vectors
-        noise = torch.randn(b_size, nz, 1, 1, device=device)
+        noise = torch.randn(b_size, nz, device=device)
         # Generate fake image batch with G
         fake = netG(noise)
         label.fill_(fake_label)
