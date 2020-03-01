@@ -152,8 +152,8 @@ real_label = 1
 fake_label = 0
 
 # Setup Adam optimizers for both G and D
-optimizerD = optim.RMSProp(netD.parameters(), lr=lr)
-optimizerG = optim.RMSProp(netG.parameters(), lr=lr)
+optimizerD = optim.RMSprop(netD.parameters(), lr=lr)
+optimizerG = optim.RMSprop(netG.parameters(), lr=lr)
 
 
 # Train loop 
