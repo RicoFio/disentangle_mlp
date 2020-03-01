@@ -16,11 +16,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from IPython.display import HTML
+import torchvision.utils as utils
 
 from dataset import *
 from model import *
 
 from tqdm import tqdm
+
+
+def generate_samples(img_name):
+    z_p = torch.randn(1, opt.n_hidden)
+    z_p = z_p.to(device)
+    netG.eval()
+    netD.eval()
+    with torch.autograd.no_grad():
+        x_p = netG(z_p)
+    utils.save_image(x_p.cpu(), img_name, normalize=True)
 
 # Set random seed for reproducibility
 manualSeed = 999
@@ -84,7 +95,7 @@ ngf = 64
 ndf = 64
 
 # Number of training epochs
-num_epochs = 100
+num_epochs = 50
 
 # Learning rate for optimizers
 lr = 0.0003
@@ -110,6 +121,7 @@ def weights_init(m):
 
 
 dataloader, _ = get_data_loader(opt)
+device = torch.device("cuda:0" if T.cuda.is_available() else "cpu")
 
 # Create the generator
 netG = Generator_celeba(opt).to(device)
@@ -144,15 +156,15 @@ criterion = nn.BCELoss()
 
 # Create batch of latent vectors that we will use to visualize
 #  the progression of the generator
-fixed_noise = torch.randn(batch_size, nz, 1, 1, device=device)
+fixed_noise = torch.randn(batch_size, nz, device=device)
 
 # Establish convention for real and fake labels during training
 real_label = 1
 fake_label = 0
 
 # Setup Adam optimizers for both G and D
-optimizerD = optim.RMSProp(netD.parameters(), lr=lr)
-optimizerG = optim.RMSProp(netG.parameters(), lr=lr)
+optimizerD = optim.RMSprop(netD.parameters(), lr=lr)
+optimizerG = optim.RMSprop(netG.parameters(), lr=lr)
 
 
 # Train loop 
@@ -182,7 +194,7 @@ for epoch in range(num_epochs):
         b_size = real_cpu.size(0)
         label = torch.full((b_size,), real_label, device=device)
         # Forward pass real batch through D
-        output = netD(real_cpu).view(-1)
+        output, _ = netD(real_cpu)
         # Calculate loss on all-real batch
         errD_real = criterion(output, label)
         # Calculate gradients for D in backward pass
@@ -191,12 +203,12 @@ for epoch in range(num_epochs):
 
         ## Train with all-fake batch
         # Generate batch of latent vectors
-        noise = torch.randn(b_size, nz, 1, 1, device=device)
+        noise = torch.randn(b_size, nz, device=device)
         # Generate fake image batch with G
         fake = netG(noise)
         label.fill_(fake_label)
         # Classify all fake batch with D
-        output = netD(fake.detach()).view(-1)
+        output, _ = netD(fake.detach())
         # Calculate D's loss on the all-fake batch
         errD_fake = criterion(output, label)
         # Calculate the gradients for this batch
@@ -213,7 +225,7 @@ for epoch in range(num_epochs):
         netG.zero_grad()
         label.fill_(real_label)  # fake labels are real for generator cost
         # Since we just updated D, perform another forward pass of all-fake batch through D
-        output = netD(fake).view(-1)
+        output, _ = netD(fake)
         # Calculate G's loss based on this output
         errG = criterion(output, label)
         # Calculate gradients for G
@@ -241,7 +253,12 @@ for epoch in range(num_epochs):
         iters += 1
 
     for sample in range(opt.n_samples):
-        generate_samples("data/results-gan/ " , str(epoch) ,  "-" , str(sample) ,".jpg" )
+        string = "data/results-gan/ " , str(epoch) ,  "-" , str(sample) ,".jpg" 
+        generate_samples(string)
+
+
+
+
 
 
 
