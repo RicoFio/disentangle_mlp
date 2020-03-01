@@ -26,11 +26,10 @@ from tqdm import tqdm
 def generate_samples(img_name):
     z_p = torch.randn(1, opt.n_hidden)
     z_p = z_p.to(device)
-    E.eval()
-    G.eval()
-    D.eval()
-    with T.autograd.no_grad():
-        x_p = G(z_p)
+    netG.eval()
+    netD.eval()
+    with torch.autograd.no_grad():
+        x_p = netG(z_p)
     utils.save_image(x_p.cpu(), img_name, normalize=True)
 
 # Set random seed for reproducibility
