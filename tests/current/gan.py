@@ -16,6 +16,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from IPython.display import HTML
+import torchvision.utils as utils
 
 from dataset import *
 from model import *
