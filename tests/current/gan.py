@@ -41,7 +41,7 @@ parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=36)
 parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8]) # n_z
 parser.add_argument('--input_channels', type=int, default=3)
-parser.add_argument('--output_channels', type=int, default=64)
+parser.add_argument('--n_hidden', type=int, default=128)
 parser.add_argument('--img_size', type=int, default=64)
 parser.add_argument('--w_kld', type=float, default=1)
 parser.add_argument('--w_loss_g', type=float, default=0.01)
