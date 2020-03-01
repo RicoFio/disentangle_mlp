@@ -145,7 +145,7 @@ criterion = nn.BCELoss()
 
 # Create batch of latent vectors that we will use to visualize
 #  the progression of the generator
-fixed_noise = torch.randn(batch_size, nz, 1, 1, device=device)
+fixed_noise = torch.randn(batch_size, nz, device=device)
 
 # Establish convention for real and fake labels during training
 real_label = 1
