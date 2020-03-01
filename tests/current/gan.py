@@ -183,7 +183,7 @@ for epoch in range(num_epochs):
         b_size = real_cpu.size(0)
         label = torch.full((b_size,), real_label, device=device)
         # Forward pass real batch through D
-        output, _ = netD(real_cpu).view(-1)
+        output, _ = netD(real_cpu)
         # Calculate loss on all-real batch
         errD_real = criterion(output, label)
         # Calculate gradients for D in backward pass
@@ -197,7 +197,7 @@ for epoch in range(num_epochs):
         fake = netG(noise)
         label.fill_(fake_label)
         # Classify all fake batch with D
-        output, _ = netD(fake.detach()).view(-1)
+        output, _ = netD(fake.detach())
         # Calculate D's loss on the all-fake batch
         errD_fake = criterion(output, label)
         # Calculate the gradients for this batch
@@ -214,7 +214,7 @@ for epoch in range(num_epochs):
         netG.zero_grad()
         label.fill_(real_label)  # fake labels are real for generator cost
         # Since we just updated D, perform another forward pass of all-fake batch through D
-        output, _ = netD(fake).view(-1)
+        output, _ = netD(fake)
         # Calculate G's loss based on this output
         errG = criterion(output, label)
         # Calculate gradients for G
