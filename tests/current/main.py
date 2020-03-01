@@ -231,7 +231,7 @@ def generate_samples(img_name):
     D.eval()
     with T.autograd.no_grad():
         x_p = G(z_p)
-    utils.save_image(x_p.cpu(), img_name, normalize=True, nrow=6)
+    utils.save_image(x_p.cpu(), img_name, normalize=True)
 
 
 
