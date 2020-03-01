@@ -254,6 +254,7 @@ for epoch in range(num_epochs):
 
     for sample in range(opt.n_samples):
         string = "data/results-gan/ " , str(epoch) ,  "-" , str(sample) ,".jpg" 
+        print(string)
         generate_samples(string)
 
 
