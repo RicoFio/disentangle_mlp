@@ -253,7 +253,8 @@ for epoch in range(num_epochs):
         iters += 1
 
     for sample in range(opt.n_samples):
-        generate_samples("data/results-gan/ " , str(epoch) ,  "-" , str(sample) ,".jpg" )
+        string = "data/results-gan/ " , str(epoch) ,  "-" , str(sample) ,".jpg" 
+        generate_samples(string)
 
 
 
