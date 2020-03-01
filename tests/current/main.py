@@ -21,8 +21,8 @@ model_urls['resnet18'] = model_urls['resnet18'].replace('https://', 'http://')
 
 from tqdm import tqdm
 
-save_path = "data/saved_models/saved_model_epoch_"
-load_path = "data/saved_models/saved_model.tar"
+save_path = "home/shared/save_nicola/saved_model_epoch_"
+load_path = "home/shared/saved_models/celeba_models/saved_model_epoch_73.tar"
 
 if not os.path.exists("data/saved_models"):
     os.makedirs("data/saved_models")
@@ -98,32 +98,34 @@ elif opt.dataset == "celebA":
 
 device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
 
-if T.cuda.device_count() > 1:
-    print("Let's use", T.cuda.device_count(), "GPUs!")
-    print("Running Test")
-    test_input_size = 5
-    test_output_size = 2
-    test_data_size = 100
-    test_batch_size = 30
-    rand_loader = T.utils.data.DataLoader(dataset=RandomDataset(test_input_size, test_data_size),
-                            batch_size=test_batch_size, shuffle=True)
-    model = Test_Model(test_input_size, test_output_size)
-    model = nn.DataParallel(model)
-    model.to(device)
-    for data in rand_loader:
-        test_input = data.to(device)
-        output = model(test_input)
-        print("Outside: input size", test_input.size(),
-            "output_size", output.size())
-    print("######################\n")
+# if T.cuda.device_count() > 1:
+#     print("Let's use", T.cuda.device_count(), "GPUs!")
+#     print("Running Test")
+#     test_input_size = 5
+#     test_output_size = 2
+#     test_data_size = 100
+#     test_batch_size = 30
+#     rand_loader = T.utils.data.DataLoader(dataset=RandomDataset(test_input_size, test_data_size),
+#                             batch_size=test_batch_size, shuffle=True)
+#     model = Test_Model(test_input_size, test_output_size)
+#     model = nn.DataParallel(model)
+#     model.to(device)
+#     for data in rand_loader:
+#         test_input = data.to(device)
+#         output = model(test_input)
+#         print("Outside: input size", test_input.size(),
+#             "output_size", output.size())
+#     print("######################\n")
+
+E.to(device)
+G.to(device)
+D.to(device)
+
 
 E = nn.DataParallel(E)
 G = nn.DataParallel(G)
 D = nn.DataParallel(D)
 
-E.to(device)
-G.to(device)
-D.to(device)
 
 E_trainer = T.optim.Adam(E.parameters(), lr=opt.lr_e)
 G_trainer = T.optim.Adam(G.parameters(), lr=opt.lr_g, betas=(0.5, 0.999))
