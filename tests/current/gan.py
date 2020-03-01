@@ -84,7 +84,7 @@ ngf = 64
 ndf = 64
 
 # Number of training epochs
-num_epochs = 100
+num_epochs = 50
 
 # Learning rate for optimizers
 lr = 0.0003
@@ -243,6 +243,10 @@ for epoch in range(num_epochs):
 
     for sample in range(opt.n_samples):
         generate_samples("data/results-gan/ " , str(epoch) ,  "-" , str(sample) ,".jpg" )
+
+
+
+
 
 
 
