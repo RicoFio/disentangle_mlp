@@ -159,10 +159,10 @@ criterion = nn.BCELoss()
 fixed_noise = torch.randn(batch_size, nz, device=device)
 
 # Establish convention for real and fake labels during training
-real_label = 1
-fake_label = 0
+real_label = 0.9
+fake_label = 0.1
 
-# Setup Adam optimizers for both G and D
+# Setup optimizers for both G and D
 optimizerD = optim.RMSprop(netD.parameters(), lr=lr)
 optimizerG = optim.RMSprop(netG.parameters(), lr=lr)
 
