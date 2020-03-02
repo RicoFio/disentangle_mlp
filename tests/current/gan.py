@@ -41,13 +41,10 @@ random.seed(manualSeed)
 torch.manual_seed(manualSeed)
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str, default="birds")
+parser.add_argument('--dataset', type=str, default="celebA")
 parser.add_argument('--image_root', type=str, default="./data")
 parser.add_argument('--batch_size', type=int, default=256)
 parser.add_argument('--epochs', type=int, default=150)
-parser.add_argument('--lr_e', type=float, default=0.0003)
-parser.add_argument('--lr_g', type=float, default=0.0003)
-parser.add_argument('--lr_d', type=float, default=0.0003)
 parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=10)
 parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8]) # n_z
@@ -98,7 +95,7 @@ ndf = 64
 num_epochs = 50
 
 # Learning rate for optimizers
-lr = 0.0003
+lr = 0.00003
 
 # Beta1 hyperparam for Adam optimizers
 beta1 = 0.5
@@ -187,8 +184,8 @@ for epoch in range(num_epochs):
     for i, data in enumerate(dataloader, 0):
 
         # create labels 
-        fake_label = np.random.choice(a=[0.1,0.9], p=[0.8, 0.2])
-        real_label = np.random.choice(a=[0.1,0.9], p=[0.2, 0.8])
+        fake_label = np.random.choice(a=[0.1,0.9], p=[0.95, 0.05])
+        real_label = np.random.choice(a=[0.1,0.9], p=[0.05, 0.95])
 
         ############################
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
