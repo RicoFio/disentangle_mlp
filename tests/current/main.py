@@ -38,9 +38,9 @@ if not os.path.exists("data/saved_models"):
 ## Discriminate sample z True
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str, default="birds")
+parser.add_argument('--dataset', type=str, default="celebA")
 parser.add_argument('--image_root', type=str, default="./data")
-parser.add_argument('--batch_size', type=int, default=64)
+parser.add_argument('--batch_size', type=int, default=256)
 parser.add_argument('--epochs', type=int, default=101)
 parser.add_argument('--lr_e', type=float, default=0.0002)
 parser.add_argument('--lr_g', type=float, default=0.0002)
@@ -118,7 +118,7 @@ def train_batch(x_r):
     x_f = G(z)
 
     #Extract latent_z corresponding to noise
-    z_p = T.randn(batch_size, opt.n_z)
+    z_p = T.randn(batch_size, opt.n_hidden)
     z_p = z_p.to(device)
     #Extract fake images corresponding to noise
     x_p = G(z_p)
