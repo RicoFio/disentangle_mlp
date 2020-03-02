@@ -159,8 +159,8 @@ criterion = nn.BCELoss()
 fixed_noise = torch.randn(batch_size, nz, device=device)
 
 # Establish convention for real and fake labels during training
-real_label = 0.9
-fake_label = 0.1
+# real_label = 0.9
+# fake_label = 0.1
 
 # Setup optimizers for both G and D
 optimizerD = optim.RMSprop(netD.parameters(), lr=lr)
@@ -178,11 +178,17 @@ G_losses = []
 D_losses = []
 iters = 0
 
+
+
 print("Starting Training Loop...")
 # For each epoch
 for epoch in range(num_epochs):
     # For each batch in the dataloader
     for i, data in enumerate(dataloader, 0):
+
+        # create labels 
+        fake_label = np.random.choice(a=[0.1,0.9], p=[0.95, 0.05])
+        real_label = np.random.choice(a=[0.1,0.9], p=[0.05, 0.95])
 
         ############################
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
