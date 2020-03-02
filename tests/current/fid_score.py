@@ -100,7 +100,7 @@ def get_activations(files, model, batch_size=50, dims=2048, verbose=False):
         batch_size = len(files)
 
     pred_arr = np.empty((len(files), dims))
-
+    print(len(files), batch_size)
     for i in tqdm(range(0, len(files), batch_size)):
         if verbose:
             print('\rPropagating batch %d/%d' % (i + 1, batch_size),
@@ -222,7 +222,9 @@ def _compute_statistics_of_path(path, model, batch_size, dims):
         f.close()
     else:
         path = pathlib.Path(path)
+        print("Loading path ",path)
         files = list(path.glob('*.jpg')) + list(path.glob('*.png'))
+        print(f"Loaded {len(files)} files")
         m, s = calculate_activation_statistics(files, model, batch_size,
                                                dims)
 
