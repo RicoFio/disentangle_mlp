@@ -95,6 +95,8 @@ def get_activations(files, model, batch_size=50, dims=2048, verbose=True, save=F
     global SAVE_PATH
     model.eval()
 
+    model = model.to(device)
+
     if batch_size > len(files):
         print(('Warning: batch size is bigger than the data size. '
                'Setting batch size to data size'))
@@ -117,7 +119,7 @@ def get_activations(files, model, batch_size=50, dims=2048, verbose=True, save=F
         images /= 255
 
         batch = torch.from_numpy(images).type(torch.FloatTensor)
-        batch = nn.DataParallel(batch)
+        #batch = nn.DataParallel(batch)
         batch = batch.to(device)
 
         pred = model(batch)[0]
@@ -195,7 +197,7 @@ def calculate_frechet_distance(mu1, sigma1, mu2, sigma2, eps=1e-6):
 
 
 def calculate_activation_statistics(files, model, batch_size=50,
-                                    dims=2048, verbose=False):
+                                   dims=2048, verbose=False, save=False):
     """Calculation of the statistics used by the FID.
     Params:
     -- files       : List of image files paths

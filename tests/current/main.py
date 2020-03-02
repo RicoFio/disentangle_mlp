@@ -21,7 +21,7 @@ from torchvision.models.resnet import model_urls
 
 from tqdm import tqdm
 
-save_path = "home/shared/save_nicola/saved_model_epoch_"
+save_path = "./data/results/model.tar"
 load_path = "home/shared/saved_models/celeba_models/saved_model_epoch_73.tar"
 
 if not os.path.exists("data/saved_models"):
@@ -38,13 +38,13 @@ if not os.path.exists("data/saved_models"):
 ## Discriminate sample z True
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataset', type=str, default="birds")
+parser.add_argument('--dataset', type=str, default="celebA")
 parser.add_argument('--image_root', type=str, default="./data")
 parser.add_argument('--batch_size', type=int, default=64)
 parser.add_argument('--epochs', type=int, default=101)
-parser.add_argument('--lr_e', type=float, default=0.0002)
-parser.add_argument('--lr_g', type=float, default=0.0002)
-parser.add_argument('--lr_d', type=float, default=0.0002)
+parser.add_argument('--lr_e', type=float, default=0.00003)
+parser.add_argument('--lr_g', type=float, default=0.00003)
+parser.add_argument('--lr_d', type=float, default=0.00003)
 parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=36)
 parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8])
@@ -118,7 +118,7 @@ def train_batch(x_r):
     x_f = G(z)
 
     #Extract latent_z corresponding to noise
-    z_p = T.randn(batch_size, opt.n_z)
+    z_p = T.randn(batch_size, opt.n_hidden)
     z_p = z_p.to(device)
     #Extract fake images corresponding to noise
     x_p = G(z_p)
@@ -166,7 +166,7 @@ def training():
     if opt.resume_training:
         start_epoch = load_model_from_checkpoint()
 
-    for epoch in range(start_epoch, opt.epochs):
+    for epoch in tqdm(range(start_epoch, opt.epochs)):
         E.train()
         G.train()
         D.train()
@@ -176,7 +176,7 @@ def training():
         T_loss_GD = []
         T_loss_kld = []
 
-        for x, _ in train_loader:
+        for x, _ in tqdm(train_loader):
             x = x.to(device)
             loss_D, loss_G, loss_GD, loss_kld = train_batch(x)
             T_loss_D.append(loss_D)
