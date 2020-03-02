@@ -78,7 +78,7 @@ train_loader, _ = get_data_loader(opt)
 device = T.device("cuda:0" if T.cuda.is_available() else "cpu")
 
 if opt.dataset == "birds":
-    E = Encoder_birds(opt, get_cuda).to(device)
+    E = Encoder_birds(opt).to(device)
     G = Generator_birds(opt).to(device).apply(weights_init)
     D = Discriminator_birds(opt).to(device).apply(weights_init)
 
@@ -92,25 +92,6 @@ elif opt.dataset == "celebA":
     G = Generator_celeba(opt).to(device).apply(weights_init)
     D = Discriminator_celeba(opt).to(device).apply(weights_init)
 
-# if T.cuda.device_count() > 1:
-#     print("Let's use", T.cuda.device_count(), "GPUs!")
-#     print("Running Test")
-#     test_input_size = 5
-#     test_output_size = 2
-#     test_data_size = 100
-#     test_batch_size = 30
-#     rand_loader = T.utils.data.DataLoader(dataset=RandomDataset(test_input_size, test_data_size),
-#                             batch_size=test_batch_size, shuffle=True)
-#     model = Test_Model(test_input_size, test_output_size)
-#     model = nn.DataParallel(model)
-#     model.to(device)
-#     for data in rand_loader:
-#         test_input = data.to(device)
-#         output = model(test_input)
-#         print("Outside: input size", test_input.size(),
-#             "output_size", output.size())
-#     print("######################\n")
-
 
 E.to(device)
 G.to(device)
@@ -121,7 +102,7 @@ G = nn.DataParallel(G)
 D = nn.DataParallel(D)
 
 
-E_trainer = T.optim.RMSprpop(E.parameters(), lr=opt.lr_e, weight_decay=0.9, eps=1e-8)
+E_trainer = T.optim.RMSprop(E.parameters(), lr=opt.lr_e, weight_decay=0.9, eps=1e-8)
 G_trainer = T.optim.RMSprop(G.parameters(), lr=opt.lr_g, weight_decay=0.9, eps=1e-8)
 D_trainer = T.optim.RMSprop(D.parameters(), lr=opt.lr_d, weight_decay=0.9, eps=1e-8)
 
@@ -133,39 +114,24 @@ def train_batch(x_r):
     #Extract latent_z corresponding to real images
     z, kld = E(x_r)
     kld = kld.mean()
-
-
-    ## Train with all-real batch
-    D_trainer.zero_grad()
-    ld_r, fd_r = D(x_r)
-    loss_D_real = F.binary_cross_entropy(ld_r, y_real)
-    loss_D_real.backward(retain_graph=True)
-    print(loss_D_real)
-
-    ## Train with all-fake batch
-
     #Extract fake images corresponding to real images
-    x_f = G(z).to(device)
+    x_f = G(z)
 
     #Extract latent_z corresponding to noise
-    z_p = T.randn(batch_size, opt.n_hidden).to(device)
+    z_p = T.randn(batch_size, opt.n_z)
+    z_p = z_p.to(device)
     #Extract fake images corresponding to noise
-    x_p = G(z_p).to(device)
+    x_p = G(z_p)
 
-    #Compute D(x) for real and noise 
-    ld_f, fd_f = D(x_f.detach())
-    ld_p, fd_p = D(x_p.detach())
-
-    loss_D_fake = (F.binary_cross_entropy(ld_f, y_fake) + F.binary_cross_entropy(ld_p, y_fake))
-
-    loss_D_fake.backward(retain_graph=True)
-    print(loss_D_fake)
-    loss_D = loss_D_real + loss_D_fake
+    #Compute D(x) for real and fake images along with their features
+    ld_r, fd_r = D(x_r)
+    ld_f, fd_f = D(x_f)
+    ld_p, fd_p = D(x_p)
 
     #------------D training------------------
-    # loss_D = F.binary_cross_entropy(ld_r, y_real) + 0.5*(F.binary_cross_entropy(ld_f, y_fake) + F.binary_cross_entropy(ld_p, y_fake))
-    # loss_D.backward(retain_graph = True)
-
+    loss_D = F.binary_cross_entropy(ld_r, y_real) + 0.5*(F.binary_cross_entropy(ld_f, y_fake) + F.binary_cross_entropy(ld_p, y_fake))
+    D_trainer.zero_grad()
+    loss_D.backward(retain_graph = True)
     D_trainer.step()
 
     #------------E & G training--------------
@@ -173,13 +139,11 @@ def train_batch(x_r):
     #loss corresponding to -log(D(G(z_p)))
     loss_GD = F.binary_cross_entropy(ld_p, y_real)
     #pixel wise matching loss and discriminator's feature matching loss
-    loss_G = 0.5 * ((x_f - x_r).pow(2).sum() + (fd_f - fd_r.detach()).pow(2).sum()) / batch_size
+    loss_G = 0.5 * (0.01*(x_f - x_r).pow(2).sum() + (fd_f - fd_r.detach()).pow(2).sum()) / batch_size
 
     E_trainer.zero_grad()
     G_trainer.zero_grad()
-    total_loss =  (opt.w_kld*kld+opt.w_loss_g*loss_G+opt.w_loss_gd*loss_GD)
-    print(total_loss, "total loss")
-    total_loss.backward()
+    (opt.w_kld*kld+opt.w_loss_g*loss_G+opt.w_loss_gd*loss_GD).backward()
     E_trainer.step()
     G_trainer.step()
 
@@ -202,7 +166,7 @@ def training():
     if opt.resume_training:
         start_epoch = load_model_from_checkpoint()
 
-    for epoch in tqdm(range(start_epoch, opt.epochs)):
+    for epoch in range(start_epoch, opt.epochs):
         E.train()
         G.train()
         D.train()
@@ -212,9 +176,7 @@ def training():
         T_loss_GD = []
         T_loss_kld = []
 
-        for x, _ in tqdm(train_loader):
-            #plt.imshow(np.transpose(utils.make_grid(x[0][:64], padding=2, normalize=True).cpu(),(1,2,0)))
-            #plt.show()
+        for x, _ in train_loader:
             x = x.to(device)
             loss_D, loss_G, loss_GD, loss_kld = train_batch(x)
             T_loss_D.append(loss_D)
@@ -230,10 +192,7 @@ def training():
 
         print("epoch:", epoch, "loss_D:", "%.4f"%T_loss_D, "loss_G:", "%.4f"%T_loss_G, "loss_GD:", "%.4f"%T_loss_GD, "loss_kld:", "%.4f"%T_loss_kld)
 
-        for sample in range(opt.n_samples):
-            generate_samples("data/results/ " , str(epoch) ,  "-" , str(sample) ,".jpg" )
-
-
+        generate_samples("data/results/%d.jpg" % epoch)
         T.save({
             'epoch': epoch + 1,
             "E_model": E.state_dict(),
@@ -243,6 +202,129 @@ def training():
             'G_trainer': G_trainer.state_dict(),
             'D_trainer': D_trainer.state_dict()
         }, save_path)
+
+
+
+
+# THIS MAY NOT WORK 
+# def train_batch(x_r):
+#     batch_size = x_r.size(0)
+#     y_real = T.ones(batch_size).to(device)
+#     y_fake = T.zeros(batch_size).to(device)
+
+#     #Extract latent_z corresponding to real images
+#     z, kld = E(x_r)
+#     kld = kld.mean()
+
+
+#     ## Train with all-real batch
+#     D_trainer.zero_grad()
+#     ld_r, fd_r = D(x_r)
+#     loss_D_real = F.binary_cross_entropy(ld_r, y_real)
+#     loss_D_real.backward(retain_graph=True)
+#     print(loss_D_real)
+
+#     ## Train with all-fake batch
+
+#     #Extract fake images corresponding to real images
+#     x_f = G(z).to(device)
+
+#     #Extract latent_z corresponding to noise
+#     z_p = T.randn(batch_size, opt.n_hidden).to(device)
+#     #Extract fake images corresponding to noise
+#     x_p = G(z_p).to(device)
+
+#     #Compute D(x) for real and noise 
+#     ld_f, fd_f = D(x_f.detach())
+#     ld_p, fd_p = D(x_p.detach())
+
+#     loss_D_fake = (F.binary_cross_entropy(ld_f, y_fake) + F.binary_cross_entropy(ld_p, y_fake))
+
+#     loss_D_fake.backward(retain_graph=True)
+#     print(loss_D_fake)
+#     loss_D = loss_D_real + loss_D_fake
+
+#     #------------D training------------------
+#     # loss_D = F.binary_cross_entropy(ld_r, y_real) + 0.5*(F.binary_cross_entropy(ld_f, y_fake) + F.binary_cross_entropy(ld_p, y_fake))
+#     # loss_D.backward(retain_graph = True)
+
+#     D_trainer.step()
+
+#     #------------E & G training--------------
+
+#     #loss corresponding to -log(D(G(z_p)))
+#     loss_GD = F.binary_cross_entropy(ld_p, y_real)
+#     #pixel wise matching loss and discriminator's feature matching loss
+#     loss_G = 0.5 * ((x_f - x_r).pow(2).sum() + (fd_f - fd_r.detach()).pow(2).sum()) / batch_size
+
+#     E_trainer.zero_grad()
+#     G_trainer.zero_grad()
+#     total_loss =  (opt.w_kld*kld+opt.w_loss_g*loss_G+opt.w_loss_gd*loss_GD)
+#     print(total_loss, "total loss")
+#     total_loss.backward()
+#     E_trainer.step()
+#     G_trainer.step()
+
+
+#     return loss_D.item(), loss_G.item(), loss_GD.item(), kld.item()
+
+# def load_model_from_checkpoint():
+#     global E, G, D, E_trainer, G_trainer, D_trainer
+#     checkpoint = T.load(save_path)
+#     E.load_state_dict(checkpoint['E_model'])
+#     G.load_state_dict(checkpoint['G_model'])
+#     D.load_state_dict(checkpoint['D_model'])
+#     E_trainer.load_state_dict(checkpoint['E_trainer'])
+#     G_trainer.load_state_dict(checkpoint['G_trainer'])
+#     D_trainer.load_state_dict(checkpoint['D_trainer'])
+#     return checkpoint['epoch']
+
+# def training():
+#     start_epoch = 0
+#     if opt.resume_training:
+#         start_epoch = load_model_from_checkpoint()
+
+#     for epoch in tqdm(range(start_epoch, opt.epochs)):
+#         E.train()
+#         G.train()
+#         D.train()
+
+#         T_loss_D = []
+#         T_loss_G = []
+#         T_loss_GD = []
+#         T_loss_kld = []
+
+#         for x, _ in tqdm(train_loader):
+#             #plt.imshow(np.transpose(utils.make_grid(x[0][:64], padding=2, normalize=True).cpu(),(1,2,0)))
+#             #plt.show()
+#             x = x.to(device)
+#             loss_D, loss_G, loss_GD, loss_kld = train_batch(x)
+#             T_loss_D.append(loss_D)
+#             T_loss_G.append(loss_G)
+#             T_loss_GD.append(loss_GD)
+#             T_loss_kld.append(loss_kld)
+
+
+#         T_loss_D = np.mean(T_loss_D)
+#         T_loss_G = np.mean(T_loss_G)
+#         T_loss_GD = np.mean(T_loss_GD)
+#         T_loss_kld = np.mean(T_loss_kld)
+
+#         print("epoch:", epoch, "loss_D:", "%.4f"%T_loss_D, "loss_G:", "%.4f"%T_loss_G, "loss_GD:", "%.4f"%T_loss_GD, "loss_kld:", "%.4f"%T_loss_kld)
+
+#         for sample in range(opt.n_samples):
+#             generate_samples("data/results/ " , str(epoch) ,  "-" , str(sample) ,".jpg" )
+
+
+#         T.save({
+#             'epoch': epoch + 1,
+#             "E_model": E.state_dict(),
+#             "G_model": G.state_dict(),
+#             "D_model": D.state_dict(),
+#             'E_trainer': E_trainer.state_dict(),
+#             'G_trainer': G_trainer.state_dict(),
+#             'D_trainer': D_trainer.state_dict()
+#         }, save_path)
 
 
 def generate_samples(img_name):
