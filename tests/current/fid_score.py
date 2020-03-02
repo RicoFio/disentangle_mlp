@@ -48,6 +48,8 @@ from tqdm import tqdm
 
 from inception import InceptionV3
 
+SAVE_PATH = "/home/shared/save_riccardo/fid/celeba/celeba.npy"
+
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
 parser.add_argument('path', type=str, nargs=2,
                     help=('Path to the generated images or '
@@ -70,7 +72,7 @@ def imread(filename):
     return np.asarray(Image.open(filename), dtype=np.uint8)[..., :3]
 
 
-def get_activations(files, model, batch_size=50, dims=2048, verbose=False):
+def get_activations(files, model, batch_size=50, dims=2048, verbose=True, save=False):
     """Calculates the activations of the pool_3 layer for all images.
 
     Params:
@@ -90,6 +92,7 @@ def get_activations(files, model, batch_size=50, dims=2048, verbose=False):
        query tensor.
     """
     global device
+    global SAVE_PATH
     model.eval()
 
     if batch_size > len(files):
@@ -125,7 +128,9 @@ def get_activations(files, model, batch_size=50, dims=2048, verbose=False):
             pred = adaptive_avg_pool2d(pred, output_size=(1, 1))
 
         pred_arr[start:end] = pred.cpu().data.numpy().reshape(pred.size(0), -1)
-
+    
+    if save:
+        np.save(SAVE_PATH, pred_arr)
     if verbose:
         print(' done')
 
@@ -213,8 +218,8 @@ def calculate_activation_statistics(files, model, batch_size=50,
     return mu, sigma
 
 
-def _compute_statistics_of_path(path, model, batch_size, dims):
-    if path.endswith('.npz'):
+def _compute_statistics_of_path(path, model, batch_size, dims, save=False):
+    if path.endswith('.npy'):
         f = np.load(path)
         m, s = f['mu'][:], f['sigma'][:]
         f.close()
@@ -224,7 +229,7 @@ def _compute_statistics_of_path(path, model, batch_size, dims):
         files = list(path.glob('*.jpg')) + list(path.glob('*.png'))
         print(f"Loaded {len(files)} files")
         m, s = calculate_activation_statistics(files, model, batch_size,
-                                               dims)
+                                               dims, save=save)
 
     return m, s
 
@@ -244,7 +249,7 @@ def calculate_fid_given_paths(paths, batch_size, dims):
     model = model.to(device)
 
     m1, s1 = _compute_statistics_of_path(paths[0], model, batch_size,
-                                         dims)
+                                            dims, save=True)
     m2, s2 = _compute_statistics_of_path(paths[1], model, batch_size,
                                          dims)
     fid_value = calculate_frechet_distance(m1, s1, m2, s2)
