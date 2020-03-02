@@ -42,9 +42,9 @@ parser.add_argument('--dataset', type=str, default="celebA")
 parser.add_argument('--image_root', type=str, default="./data")
 parser.add_argument('--batch_size', type=int, default=256)
 parser.add_argument('--epochs', type=int, default=101)
-parser.add_argument('--lr_e', type=float, default=0.00003)
-parser.add_argument('--lr_g', type=float, default=0.00003)
-parser.add_argument('--lr_d', type=float, default=0.00003)
+parser.add_argument('--lr_e', type=float, default=0.0003)
+parser.add_argument('--lr_g', type=float, default=0.0003)
+parser.add_argument('--lr_d', type=float, default=0.0003)
 parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=36)
 parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8])
@@ -192,7 +192,7 @@ def training():
 
         print("epoch:", epoch, "loss_D:", "%.4f"%T_loss_D, "loss_G:", "%.4f"%T_loss_G, "loss_GD:", "%.4f"%T_loss_GD, "loss_kld:", "%.4f"%T_loss_kld)
 
-        generate_samples("data/results/%d.jpg" % epoch)
+        generate_samples(opt, "data/results/%d.jpg" % epoch)
         T.save({
             'epoch': epoch + 1,
             "E_model": E.state_dict(),
@@ -327,8 +327,8 @@ def training():
 #         }, save_path)
 
 
-def generate_samples(img_name):
-    z_p = T.randn(1, opt.n_hidden)
+def generate_samples(opt, img_name):
+    z_p = T.randn(opt.n_samples, opt.n_hidden)
     z_p = z_p.to(device)
     E.eval()
     G.eval()
@@ -345,4 +345,4 @@ if __name__ == "__main__":
     else:
         checkpoint = T.load(save_path)
         G.load_state_dict(checkpoint['G_model'])
-        generate_samples("data/testing_img.jpg")
+        generate_samples(opt, "data/testing_img.jpg")
