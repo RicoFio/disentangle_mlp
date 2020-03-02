@@ -46,8 +46,6 @@ from PIL import Image
 
 from tqdm import tqdm
 
-from dataset import get_data_loader
-
 from inception import InceptionV3
 
 parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
