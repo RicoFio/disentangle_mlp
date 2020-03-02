@@ -49,7 +49,7 @@ parser.add_argument('--lr_e', type=float, default=0.0003)
 parser.add_argument('--lr_g', type=float, default=0.0003)
 parser.add_argument('--lr_d', type=float, default=0.0003)
 parser.add_argument("--num_workers", type=int, default=4)
-parser.add_argument("--n_samples", type=int, default=36)
+parser.add_argument("--n_samples", type=int, default=10)
 parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8]) # n_z
 parser.add_argument('--input_channels', type=int, default=3)
 parser.add_argument('--n_hidden', type=int, default=128)
@@ -187,8 +187,8 @@ for epoch in range(num_epochs):
     for i, data in enumerate(dataloader, 0):
 
         # create labels 
-        fake_label = np.random.choice(a=[0.1,0.9], p=[0.95, 0.05])
-        real_label = np.random.choice(a=[0.1,0.9], p=[0.05, 0.95])
+        fake_label = np.random.choice(a=[0.1,0.9], p=[0.8, 0.2])
+        real_label = np.random.choice(a=[0.1,0.9], p=[0.2, 0.8])
 
         ############################
         # (1) Update D network: maximize log(D(x)) + log(1 - D(G(z)))
