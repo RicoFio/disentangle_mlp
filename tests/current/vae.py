@@ -160,7 +160,7 @@ def weights_init(m):
         nn.init.constant_(m.bias.data, 0)
 
 
-model = VAE().to(device)
+model = VAE(opt=opt).to(device)
 model.apply(weights_init)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
