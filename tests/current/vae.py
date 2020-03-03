@@ -124,8 +124,6 @@ class VAE(nn.Module):
 
     def decode(self, code):
         bs = code.size()[0]
-        print(code.size())
-        sys.exit()
         preprocessed_codes = self.preprocess(code)
         preprocessed_codes = preprocessed_codes.view(-1,
                                                      self.representation_size2[0],
@@ -218,7 +216,7 @@ if __name__ == "__main__":
         train(epoch)
         # test(epoch)
         with torch.no_grad():
-            sample = torch.randn(1, opt.n_hidden).to(device)
+            sample = torch.randn(10, opt.n_hidden).to(device)
             sample = model.module.decode(sample).cpu()
             save_image(sample.cpu(),
                        'results/sample_' + str(epoch) + '.png')
