@@ -112,12 +112,9 @@ class VAE(nn.Module):
     def encode(self, x):
         batch_size = x.size()[0]
         inner = self.features(x).squeeze()
-        print(inner.size())
         inner = inner.view(batch_size, -1)
         mu = self.x_to_mu(inner)
         logvar = self.x_to_logvar(inner)
-        print(mu.size())
-        print(logvar.size())
         return mu, logvar
 
     def reparameterize(self, mu, logvar):
@@ -182,8 +179,6 @@ def train(epoch):
         data = data.to(device)
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(data)
-        print("recon size")
-        print(recon_batch.size())
         loss = loss_function(recon_batch.to(device), data, mu.to(device), logvar.to(device))
         loss.backward()
         train_loss += loss.item()
