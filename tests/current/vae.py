@@ -124,6 +124,8 @@ class VAE(nn.Module):
 
     def decode(self, code):
         bs = code.size()[0]
+        print(code.size())
+        sys.exit()
         preprocessed_codes = self.preprocess(code)
         preprocessed_codes = preprocessed_codes.view(-1,
                                                      self.representation_size2[0],
@@ -151,7 +153,7 @@ def weights_init(m):
     elif classname.find('BatchNorm') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
-        
+
 model = VAE(opt=opt)
 model = torch.nn.DataParallel(model)
 model = model.to(device)
