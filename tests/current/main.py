@@ -22,7 +22,7 @@ from torchvision.models.resnet import model_urls
 from tqdm import tqdm
 
 save_path = "./data/results/model.tar"
-load_path = "home/shared/saved_models/celeba_models/saved_model_epoch_73.tar"
+# load_path = "home/shared/saved_models/celeba_models/saved_model_epoch_73.tar"
 
 if not os.path.exists("data/saved_models"):
     os.makedirs("data/saved_models")
