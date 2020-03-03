@@ -39,7 +39,7 @@ parser.add_argument('--w_loss_g', type=float, default=0.01)
 parser.add_argument('--w_loss_gd', type=float, default=1)
 
 
-opt = parser.parse_opt()
+opt = parser.parse_args()
 opt.cuda = not opt.no_cuda and torch.cuda.is_available()
 
 torch.manual_seed(opt.seed)
