@@ -121,9 +121,10 @@ class VAE(nn.Module):
 
 
     def encode(self, x):
-        print(x.size())
-        inner = self.features(x)
+        batch_size = x.size()[0]
+        inner = self.features(x).squeeze()
         print(inner.size())
+        inner = inner.view(batch_size, -1)
         mu = self.x_to_mu(inner)
         logvar = self.x_to_logvar(inner)
         print(mu.size())
@@ -139,9 +140,9 @@ class VAE(nn.Module):
         bs = code.size()[0]
         preprocessed_codes = self.preprocess(code)
         preprocessed_codes = preprocessed_codes.view(-1,
-                                                     self.representation_size[0],
-                                                     self.representation_size[1],
-                                                     self.representation_size[2])
+                                                     self.representation_size2[0],
+                                                     self.representation_size2[1],
+                                                     self.representation_size2[2])
         output = self.deconv1(preprocessed_codes, output_size=(bs, 256, 16, 16))
         output = self.act1(output)
         output = self.deconv2(output, output_size=(bs, 128, 32, 32))
@@ -191,6 +192,7 @@ def train(epoch):
         data = data.to(device)
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(data)
+        print("recon size")
         print(recon_batch.size())
         loss = loss_function(recon_batch, data, mu, logvar)
         loss.backward()
