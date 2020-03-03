@@ -153,7 +153,8 @@ def weights_init(m):
         nn.init.constant_(m.bias.data, 0)
 
 model = torch.nn.DataParallel(model)
-model = VAE(opt=opt).to(device)
+model = VAE(opt=opt)
+model = model.to(device)
 model.apply(weights_init)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
