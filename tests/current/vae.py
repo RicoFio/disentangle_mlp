@@ -151,9 +151,9 @@ def weights_init(m):
     elif classname.find('BatchNorm') != -1:
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
-
-model = torch.nn.DataParallel(model)
+        
 model = VAE(opt=opt)
+model = torch.nn.DataParallel(model)
 model = model.to(device)
 model.apply(weights_init)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
