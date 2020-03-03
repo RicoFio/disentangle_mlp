@@ -30,7 +30,7 @@ parser.add_argument('--dataset', type=str, default="celebA")
 parser.add_argument('--image_root', type=str, default="./data")
 parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=10)
-parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8]) # n_z
+parser.add_argument('--n_z', type=int, nopt='+', default=[256, 8, 8]) # n_z
 parser.add_argument('--input_channels', type=int, default=3)
 parser.add_argument('--n_hidden', type=int, default=128)
 parser.add_argument('--img_size', type=int, default=64)
@@ -39,21 +39,21 @@ parser.add_argument('--w_loss_g', type=float, default=0.01)
 parser.add_argument('--w_loss_gd', type=float, default=1)
 
 
-args = parser.parse_args()
-args.cuda = not args.no_cuda and torch.cuda.is_available()
+opt = parser.parse_opt()
+opt.cuda = not opt.no_cuda and torch.cuda.is_available()
 
-torch.manual_seed(args.seed)
+torch.manual_seed(opt.seed)
 
-device = torch.device("cuda" if args.cuda else "cpu")
+device = torch.device("cuda" if opt.cuda else "cpu")
 
-kwargs = {'num_workers': 1, 'pin_memory': True} if args.cuda else {}
+kwargs = {'num_workers': 1, 'pin_memory': True} if opt.cuda else {}
 # train_loader = torch.utils.data.DataLoader(
 #     datasets.MNIST('../data', train=True, download=True,
 #                    transform=transforms.ToTensor()),
-#     batch_size=args.batch_size, shuffle=True, **kwargs)
+#     batch_size=opt.batch_size, shuffle=True, **kwopt)
 # test_loader = torch.utils.data.DataLoader(
 #     datasets.MNIST('../data', train=False, transform=transforms.ToTensor()),
-#     batch_size=args.batch_size, shuffle=True, **kwargs)
+#     batch_size=opt.batch_size, shuffle=True, **kwopt)
 
 train_loader, _ = get_data_loader(opt)
 
@@ -189,7 +189,7 @@ def train(epoch):
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
-        if batch_idx % args.log_interval == 0:
+        if batch_idx % opt.log_interval == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader),
@@ -218,7 +218,7 @@ def train(epoch):
 #     print('====> Test set loss: {:.4f}'.format(test_loss))
 
 if __name__ == "__main__":
-    for epoch in tqdm(range(1, args.epochs + 1)):
+    for epoch in tqdm(range(1, opt.epochs + 1)):
         train(epoch)
         # test(epoch)
         with torch.no_grad():
