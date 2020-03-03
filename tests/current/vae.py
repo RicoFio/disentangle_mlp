@@ -152,9 +152,8 @@ def weights_init(m):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
-
-model = VAE(opt=opt).to(device)
 model = torch.nn.DataParallel(model)
+model = VAE(opt=opt).to(device)
 model.apply(weights_init)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
@@ -217,6 +216,6 @@ if __name__ == "__main__":
         # test(epoch)
         with torch.no_grad():
             sample = torch.randn(1, opt.n_hidden).to(device)
-            sample = model.decode(sample).cpu()
+            sample = model.module.decode(sample).cpu()
             save_image(sample.cpu(),
                        'results/sample_' + str(epoch) + '.png')
