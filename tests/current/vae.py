@@ -28,7 +28,6 @@ parser.add_argument('--log-interval', type=int, default=10, metavar='N',
 
 parser.add_argument('--dataset', type=str, default="celebA")
 parser.add_argument('--image_root', type=str, default="./data")
-parser.add_argument('--epochs', type=int, default=150)
 parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=10)
 parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8]) # n_z
