@@ -95,15 +95,15 @@ class VAE(nn.Module):
 
         # DECODER 
         self.input_size = opt.n_hidden
-        self.representation_size = opt.n_z
+        self.representation_size2 = opt.n_z
 
-        dim = self.representation_size[0] * self.representation_size[1] * self.representation_size[2]
+        dim = self.representation_size2[0] * self.representation_size2[1] * self.representation_size2[2]
         self.preprocess = nn.Sequential(
             nn.Linear(self.input_size, dim),
             nn.BatchNorm1d(dim),
             nn.ReLU())
             # 256 x 8 x 8
-        self.deconv1 = nn.ConvTranspose2d(self.representation_size[0], 256, 5, stride=2, padding=2)
+        self.deconv1 = nn.ConvTranspose2d(self.representation_size2[0], 256, 5, stride=2, padding=2)
         self.act1 = nn.Sequential(nn.BatchNorm2d(256),
                                   nn.ReLU())
             # 256 x 16 x 16
@@ -121,8 +121,14 @@ class VAE(nn.Module):
 
 
     def encode(self, x):
+        print(x.size())
         inner = self.features(x)
-        return self.x_to_mu(inner), self.x_to_logvar(inner)
+        print(inner.size())
+        mu = self.x_to_mu(inner)
+        logvar = self.x_to_logvar(inner)
+        print(mu.size())
+        print(logvar.size())
+        return mu, logvar
 
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5*logvar)
@@ -185,6 +191,7 @@ def train(epoch):
         data = data.to(device)
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(data)
+        print(recon_batch.size())
         loss = loss_function(recon_batch, data, mu, logvar)
         loss.backward()
         train_loss += loss.item()
