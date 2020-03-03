@@ -44,9 +44,9 @@ opt.cuda = not opt.no_cuda and torch.cuda.is_available()
 
 torch.manual_seed(opt.seed)
 
-device = torch.device("cuda" if opt.cuda else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-kwargs = {'num_workers': 1, 'pin_memory': True} if opt.cuda else {}
+# kwargs = {'num_workers': 1, 'pin_memory': True} if opt.cuda else {}
 # train_loader = torch.utils.data.DataLoader(
 #     datasets.MNIST('../data', train=True, download=True,
 #                    transform=transforms.ToTensor()),
