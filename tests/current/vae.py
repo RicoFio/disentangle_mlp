@@ -30,7 +30,7 @@ parser.add_argument('--dataset', type=str, default="celebA")
 parser.add_argument('--image_root', type=str, default="./data")
 parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=10)
-parser.add_argument('--n_z', type=int, nopt='+', default=[256, 8, 8]) # n_z
+parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8]) # n_z
 parser.add_argument('--input_channels', type=int, default=3)
 parser.add_argument('--n_hidden', type=int, default=128)
 parser.add_argument('--img_size', type=int, default=64)
