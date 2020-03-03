@@ -206,7 +206,7 @@ def train(epoch):
 #                 comparison = torch.cat([data[:n],
 #                                       recon_batch[:n]])
 #                 save_image(comparison.cpu(),
-#                          'results/reconstruction_' + str(epoch) + '.png', nrow=n)
+#                          'data/results-vae/reconstruction_' + str(epoch) + '.png', nrow=n)
 
 #     test_loss /= len(test_loader.dataset)
 #     print('====> Test set loss: {:.4f}'.format(test_loss))
@@ -219,4 +219,4 @@ if __name__ == "__main__":
             sample = torch.randn(10, opt.n_hidden).to(device)
             sample = model.module.decode(sample).cpu()
             save_image(sample.cpu(),
-                       'results/sample_' + str(epoch) + '.png')
+                       'data/results-vae/sample_' + str(epoch) + '.png')
