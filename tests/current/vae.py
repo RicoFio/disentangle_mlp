@@ -40,24 +40,13 @@ parser.add_argument('--w_loss_gd', type=float, default=1)
 
 
 opt = parser.parse_args()
-opt.cuda = not opt.no_cuda and torch.cuda.is_available()
+# opt.cuda = not opt.no_cuda and torch.cuda.is_available()
 
 torch.manual_seed(opt.seed)
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# kwargs = {'num_workers': 1, 'pin_memory': True} if opt.cuda else {}
-# train_loader = torch.utils.data.DataLoader(
-#     datasets.MNIST('../data', train=True, download=True,
-#                    transform=transforms.ToTensor()),
-#     batch_size=opt.batch_size, shuffle=True, **kwopt)
-# test_loader = torch.utils.data.DataLoader(
-#     datasets.MNIST('../data', train=False, transform=transforms.ToTensor()),
-#     batch_size=opt.batch_size, shuffle=True, **kwopt)
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 train_loader, _ = get_data_loader(opt)
-
-
 
 class VAE(nn.Module):
     def __init__(self, opt, representation_size=64):
@@ -168,6 +157,7 @@ def weights_init(m):
 
 
 model = VAE(opt=opt).to(device)
+model = torch.nn.DataParallel(model)
 model.apply(weights_init)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
@@ -194,7 +184,7 @@ def train(epoch):
         recon_batch, mu, logvar = model(data)
         print("recon size")
         print(recon_batch.size())
-        loss = loss_function(recon_batch, data, mu, logvar)
+        loss = loss_function(recon_batch.to(device), data, mu.to(device), logvar.to(device))
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
