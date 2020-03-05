@@ -15,7 +15,7 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='input batch size for training (default: 128)')
-parser.add_argument('--epochs', type=int, default=10, metavar='N',
+parser.add_argument('--epochs', type=int, default=60, metavar='N',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
@@ -37,6 +37,8 @@ parser.add_argument('--img_size', type=int, default=64)
 parser.add_argument('--w_kld', type=float, default=1)
 parser.add_argument('--w_loss_g', type=float, default=0.01)
 parser.add_argument('--w_loss_gd', type=float, default=1)
+
+save_path = "./data/results/model_%.tar"
 
 
 opt = parser.parse_args()
@@ -220,3 +222,9 @@ if __name__ == "__main__":
             sample = model.module.decode(sample).cpu()
             save_image(sample.cpu(),
                        'data/results-vae/sample_' + str(epoch) + '.png')
+
+
+            torch.save({
+            'epoch': epoch + 1,
+            "VAE_model": model.state_dict(),
+            'optimizer': optimizer.state_dict()}, save_path.replace('%',str(epoch+1)))

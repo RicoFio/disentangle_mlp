@@ -21,7 +21,7 @@ from torchvision.models.resnet import model_urls
 
 from tqdm import tqdm
 
-save_path = "./data/results/model.tar"
+save_path = "./data/results/model_%.tar"
 # load_path = "home/shared/saved_models/celeba_models/saved_model_epoch_73.tar"
 
 if not os.path.exists("data/saved_models"):
@@ -201,7 +201,7 @@ def training():
             'E_trainer': E_trainer.state_dict(),
             'G_trainer': G_trainer.state_dict(),
             'D_trainer': D_trainer.state_dict()
-        }, save_path)
+        }, save_path.replace('%',str(epoch+1)))
 
 
 
