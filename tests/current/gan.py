@@ -23,7 +23,7 @@ from model import *
 
 from tqdm import tqdm
 
-save_path = "./data/results/model_%.tar"
+save_path = "./data/gan/models/model_%.tar"
 
 
 def generate_samples(img_name):
@@ -266,7 +266,7 @@ for epoch in range(num_epochs):
         'D_trainer': optimizerD.state_dict()}, save_path.replace('%',str(epoch+1)))
 
     for sample in range(opt.n_samples):
-        string = "data/results-gan/" + str(epoch) +  "_" + str(sample) + ".jpg"  
+        string = "./data/gan/results/" + str(epoch) +  "_" + str(sample) + ".jpg"  
         print(string)
         generate_samples(string)
 
