@@ -38,7 +38,7 @@ parser.add_argument('--w_kld', type=float, default=1)
 parser.add_argument('--w_loss_g', type=float, default=0.01)
 parser.add_argument('--w_loss_gd', type=float, default=1)
 
-save_path = "./data/results/model_%.tar"
+save_path = "./data/vae/models/model_%.tar"
 
 
 opt = parser.parse_args()
@@ -221,7 +221,7 @@ if __name__ == "__main__":
             sample = torch.randn(10, opt.n_hidden).to(device)
             sample = model.module.decode(sample).cpu()
             save_image(sample.cpu(),
-                       'data/results-vae/sample_' + str(epoch) + '.png')
+                       './data/vae/results/sample_' + str(epoch) + '.png')
 
 
             torch.save({
