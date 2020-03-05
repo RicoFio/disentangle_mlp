@@ -23,6 +23,8 @@ from model import *
 
 from tqdm import tqdm
 
+save_path = "./data/results/model_%.tar"
+
 
 def generate_samples(img_name):
     z_p = torch.randn(1, opt.n_hidden)
@@ -254,6 +256,14 @@ for epoch in range(num_epochs):
             img_list.append(vutils.make_grid(fake, padding=2, normalize=True))
 
         iters += 1
+
+    # Save Model
+    torch.save({
+        'epoch': epoch + 1,
+        "netG": netG.state_dict(),
+        "netD": netD.state_dict(),
+        'G_trainer': optimizerG.state_dict(),
+        'D_trainer': optimizerD.state_dict()}, save_path.replace('%',str(epoch+1)))
 
     for sample in range(opt.n_samples):
         string = "data/results-gan/" + str(epoch) +  "_" + str(sample) + ".jpg"  

@@ -15,7 +15,7 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='input batch size for training (default: 128)')
-parser.add_argument('--epochs', type=int, default=10, metavar='N',
+parser.add_argument('--epochs', type=int, default=60, metavar='N',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
@@ -30,7 +30,7 @@ parser.add_argument('--dataset', type=str, default="celebA")
 parser.add_argument('--image_root', type=str, default="./data")
 parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=10)
-parser.add_argument('--n_z', type=int, nopt='+', default=[256, 8, 8]) # n_z
+parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8]) # n_z
 parser.add_argument('--input_channels', type=int, default=3)
 parser.add_argument('--n_hidden', type=int, default=128)
 parser.add_argument('--img_size', type=int, default=64)
@@ -38,26 +38,17 @@ parser.add_argument('--w_kld', type=float, default=1)
 parser.add_argument('--w_loss_g', type=float, default=0.01)
 parser.add_argument('--w_loss_gd', type=float, default=1)
 
+save_path = "./data/results/model_%.tar"
 
-opt = parser.parse_opt()
-opt.cuda = not opt.no_cuda and torch.cuda.is_available()
+
+opt = parser.parse_args()
+# opt.cuda = not opt.no_cuda and torch.cuda.is_available()
 
 torch.manual_seed(opt.seed)
 
-device = torch.device("cuda" if opt.cuda else "cpu")
-
-kwargs = {'num_workers': 1, 'pin_memory': True} if opt.cuda else {}
-# train_loader = torch.utils.data.DataLoader(
-#     datasets.MNIST('../data', train=True, download=True,
-#                    transform=transforms.ToTensor()),
-#     batch_size=opt.batch_size, shuffle=True, **kwopt)
-# test_loader = torch.utils.data.DataLoader(
-#     datasets.MNIST('../data', train=False, transform=transforms.ToTensor()),
-#     batch_size=opt.batch_size, shuffle=True, **kwopt)
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 train_loader, _ = get_data_loader(opt)
-
-
 
 class VAE(nn.Module):
     def __init__(self, opt, representation_size=64):
@@ -95,15 +86,15 @@ class VAE(nn.Module):
 
         # DECODER 
         self.input_size = opt.n_hidden
-        self.representation_size = opt.n_z
+        self.representation_size2 = opt.n_z
 
-        dim = self.representation_size[0] * self.representation_size[1] * self.representation_size[2]
+        dim = self.representation_size2[0] * self.representation_size2[1] * self.representation_size2[2]
         self.preprocess = nn.Sequential(
             nn.Linear(self.input_size, dim),
             nn.BatchNorm1d(dim),
             nn.ReLU())
             # 256 x 8 x 8
-        self.deconv1 = nn.ConvTranspose2d(self.representation_size[0], 256, 5, stride=2, padding=2)
+        self.deconv1 = nn.ConvTranspose2d(self.representation_size2[0], 256, 5, stride=2, padding=2)
         self.act1 = nn.Sequential(nn.BatchNorm2d(256),
                                   nn.ReLU())
             # 256 x 16 x 16
@@ -121,8 +112,12 @@ class VAE(nn.Module):
 
 
     def encode(self, x):
-        inner = self.features(x)
-        return self.x_to_mu(inner), self.x_to_logvar(inner)
+        batch_size = x.size()[0]
+        inner = self.features(x).squeeze()
+        inner = inner.view(batch_size, -1)
+        mu = self.x_to_mu(inner)
+        logvar = self.x_to_logvar(inner)
+        return mu, logvar
 
     def reparameterize(self, mu, logvar):
         std = torch.exp(0.5*logvar)
@@ -133,9 +128,9 @@ class VAE(nn.Module):
         bs = code.size()[0]
         preprocessed_codes = self.preprocess(code)
         preprocessed_codes = preprocessed_codes.view(-1,
-                                                     self.representation_size[0],
-                                                     self.representation_size[1],
-                                                     self.representation_size[2])
+                                                     self.representation_size2[0],
+                                                     self.representation_size2[1],
+                                                     self.representation_size2[2])
         output = self.deconv1(preprocessed_codes, output_size=(bs, 256, 16, 16))
         output = self.act1(output)
         output = self.deconv2(output, output_size=(bs, 128, 32, 32))
@@ -159,15 +154,16 @@ def weights_init(m):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
 
-
-model = VAE().to(device)
+model = VAE(opt=opt)
+model = torch.nn.DataParallel(model)
+model = model.to(device)
 model.apply(weights_init)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def loss_function(recon_x, x, mu, logvar):
-    BCE = F.binary_cross_entropy(recon_x, x, reduction='sum')
+    MSE = F.mse_loss(recon_x, x, reduction='sum')
 
     # see Appendix B from VAE paper:
     # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
@@ -175,7 +171,7 @@ def loss_function(recon_x, x, mu, logvar):
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return BCE + KLD
+    return MSE + KLD
 
 
 def train(epoch):
@@ -185,7 +181,7 @@ def train(epoch):
         data = data.to(device)
         optimizer.zero_grad()
         recon_batch, mu, logvar = model(data)
-        loss = loss_function(recon_batch, data, mu, logvar)
+        loss = loss_function(recon_batch.to(device), data, mu.to(device), logvar.to(device))
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
@@ -212,7 +208,7 @@ def train(epoch):
 #                 comparison = torch.cat([data[:n],
 #                                       recon_batch[:n]])
 #                 save_image(comparison.cpu(),
-#                          'results/reconstruction_' + str(epoch) + '.png', nrow=n)
+#                          'data/results-vae/reconstruction_' + str(epoch) + '.png', nrow=n)
 
 #     test_loss /= len(test_loader.dataset)
 #     print('====> Test set loss: {:.4f}'.format(test_loss))
@@ -222,7 +218,13 @@ if __name__ == "__main__":
         train(epoch)
         # test(epoch)
         with torch.no_grad():
-            sample = torch.randn(1, opt.n_hidden).to(device)
-            sample = model.decode(sample).cpu()
+            sample = torch.randn(10, opt.n_hidden).to(device)
+            sample = model.module.decode(sample).cpu()
             save_image(sample.cpu(),
-                       'results/sample_' + str(epoch) + '.png')
+                       'data/results-vae/sample_' + str(epoch) + '.png')
+
+
+            torch.save({
+            'epoch': epoch + 1,
+            "VAE_model": model.state_dict(),
+            'optimizer': optimizer.state_dict()}, save_path.replace('%',str(epoch+1)))
