@@ -1,5 +1,3 @@
-from __future__ import print_function
-#%matplotlib inline
 import argparse
 import os
 import random
@@ -56,6 +54,7 @@ parser.add_argument('--img_size', type=int, default=64)
 parser.add_argument('--w_kld', type=float, default=1)
 parser.add_argument('--w_loss_g', type=float, default=0.01)
 parser.add_argument('--w_loss_gd', type=float, default=1)
+parser.add_argument('--load_model', type=str, default="")
 
 def str2bool(v):
     if v.lower() == 'true':
@@ -94,7 +93,7 @@ ngf = 64
 ndf = 64
 
 # Number of training epochs
-num_epochs = 50
+num_epochs = 60
 
 # Learning rate for optimizers
 lr = 0.00003
@@ -180,8 +179,19 @@ iters = 0
 
 
 print("Starting Training Loop...")
+
+epoch = 0
+
+if opt.resume_training and opt.load_model:
+    checkpoint = torch.load(opt.load_model)
+    netG.load_state_dict(checkpoint['netG'])
+    netD.load_state_dict(checkpoint['netD'])
+    optimizerD.load_state_dict(checkpoint['D_trainer'])
+    optimizerG.load_state_dict(checkpoint['G_trainer'])
+    epoch = checkpoint['epoch']
+
 # For each epoch
-for epoch in range(num_epochs):
+for epoch in range(epoch, num_epochs):
     # For each batch in the dataloader
     for i, data in enumerate(dataloader, 0):
 

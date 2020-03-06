@@ -15,7 +15,7 @@ from tqdm import tqdm
 parser = argparse.ArgumentParser(description='VAE MNIST Example')
 parser.add_argument('--batch-size', type=int, default=128, metavar='N',
                     help='input batch size for training (default: 128)')
-parser.add_argument('--epochs', type=int, default=60, metavar='N',
+parser.add_argument('--epochs', type=int, default=30, metavar='N',
                     help='number of epochs to train (default: 10)')
 parser.add_argument('--no-cuda', action='store_true', default=False,
                     help='enables CUDA training')
@@ -37,6 +37,7 @@ parser.add_argument('--img_size', type=int, default=64)
 parser.add_argument('--w_kld', type=float, default=1)
 parser.add_argument('--w_loss_g', type=float, default=0.01)
 parser.add_argument('--w_loss_gd', type=float, default=1)
+parser.add_argument('--load_model', type=str, default="")
 
 save_path = "./data/vae/models/model_%.tar"
 
@@ -214,7 +215,14 @@ def train(epoch):
 #     print('====> Test set loss: {:.4f}'.format(test_loss))
 
 if __name__ == "__main__":
-    for epoch in tqdm(range(1, opt.epochs + 1)):
+    if opt.load_model:
+        checkpoint = torch.load(opt.load_model)
+        model.load_state_dict(checkpoint['VAE_model'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        epoch = checkpoint['epoch']
+
+
+    for epoch in tqdm(range(epoch, opt.epochs + 1)):
         train(epoch)
         # test(epoch)
         with torch.no_grad():
@@ -226,5 +234,5 @@ if __name__ == "__main__":
 
             torch.save({
             'epoch': epoch + 1,
-            "VAE_model": model.state_dict(),
+            "VAE_model": model.module.state_dict(),
             'optimizer': optimizer.state_dict()}, save_path.replace('%',str(epoch+1)))
