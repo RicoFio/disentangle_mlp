@@ -56,6 +56,8 @@ parser.add_argument('--w_loss_g', type=float, default=0.01)
 parser.add_argument('--w_loss_gd', type=float, default=1)
 parser.add_argument('--model_path', type=str, default="")
 
+beta = 50.
+
 def str2bool(v):
     if v.lower() == 'true':
         return True
@@ -116,7 +118,8 @@ def train_batch(x_r):
 
     #Extract latent_z corresponding to real images
     z, kld = E(x_r)
-    kld = kld.mean()
+    # Beta VAE 
+    kld = kld.mean() * beta
     #Extract fake images corresponding to real images
     x_f = G(z)
 
