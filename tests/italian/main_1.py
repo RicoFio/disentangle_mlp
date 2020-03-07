@@ -23,6 +23,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description="VAEGAN")
     parser.add_argument("--img_size",default=64,action="store",type=int,dest="img_size")
     parser.add_argument("--save_path",action="store",dest="save_path")
+    parser.add_argument("--load_path",default="",action="store",dest="load_path")
     parser.add_argument("--train_folder",action="store",dest="train_folder")
     parser.add_argument("--test_folder",action="store",dest="test_folder")
     parser.add_argument("--n_epochs",default=12,action="store",type=int,dest="n_epochs")
@@ -46,6 +47,7 @@ if __name__ == "__main__":
 
     args = parse_args()
     save_path = args.save_path
+    load_path = args.load_path
     img_size = args.img_size
     train_folder = args.train_folder
     test_folder = args.test_folder
@@ -63,10 +65,17 @@ if __name__ == "__main__":
     decay_lr = args.decay_lr
     decay_equilibrium = args.decay_equilibrium
     slurm = args.slurm
-
+ 
     writer = SummaryWriter(comment="_CELEBA_ALL")
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     net = VaeGan(z_size=z_size,recon_level=recon_level).to(device)
+    
+    if load_path:
+        checkpoint = torch.load(load_path)
+        step_index = checkpoint['epoch']
+        net = net.load_state_dict(checkpoint['net'])
+
+    
     net = nn.DataParallel(net)
     # DATASET
     # dataloader = torch.utils.data.DataLoader(CELEBA(train_folder), batch_size=64,
@@ -91,7 +100,6 @@ if __name__ == "__main__":
     #lr_discriminator = MultiStepLR(optimizer_discriminator,milestones=[2],gamma=1)
 
     batch_number = len(dataloader)
-    step_index = 0
     widgets = [
 
         'Batch: ', progressbar.Counter(),
