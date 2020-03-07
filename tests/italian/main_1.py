@@ -273,6 +273,7 @@ if __name__ == "__main__":
         with data_batch,target_batch in next(iter(dataloader_test)):
             net.eval()
 
+            # reconstructions ! 
             data_in = Variable(data_batch, requires_grad=False).float().to(device)
             data_target = Variable(target_batch, requires_grad=False).float().to(device)
             out = net(data_in)
@@ -281,6 +282,7 @@ if __name__ == "__main__":
             out = make_grid(out, nrow=8)
             writer.add_image("reconstructed", out, step_index)
 
+            # samples ! 
             out = net(None, 100)
             out = out.data.cpu()
             out = (out + 1) / 2
