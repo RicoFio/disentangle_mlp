@@ -1,6 +1,6 @@
 import os
 #os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
-
+import copy
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
@@ -21,7 +21,7 @@ from torchvision.models.resnet import model_urls
 
 from tqdm import tqdm
 
-save_path = "./data/results/model_%.tar"
+save_path = "./data/saved_models/model_%.tar"
 # load_path = "home/shared/saved_models/celeba_models/saved_model_epoch_73.tar"
 
 if not os.path.exists("data/saved_models"):
@@ -41,7 +41,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', type=str, default="celebA")
 parser.add_argument('--image_root', type=str, default="./data")
 parser.add_argument('--batch_size', type=int, default=256)
-parser.add_argument('--epochs', type=int, default=101)
+parser.add_argument('--epochs', type=int, default=50)
 parser.add_argument('--lr_e', type=float, default=0.0003)
 parser.add_argument('--lr_g', type=float, default=0.0003)
 parser.add_argument('--lr_d', type=float, default=0.0003)
@@ -49,14 +49,14 @@ parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=36)
 parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8])
 parser.add_argument('--input_channels', type=int, default=3)
-parser.add_argument('--n_hidden', type=int, default=64)
+parser.add_argument('--n_hidden', type=int, default=128)
 parser.add_argument('--img_size', type=int, default=64)
 parser.add_argument('--w_kld', type=float, default=1)
-parser.add_argument('--w_loss_g', type=float, default=0.01)
+parser.add_argument('--w_loss_g', type=float, default=1)
 parser.add_argument('--w_loss_gd', type=float, default=1)
 parser.add_argument('--model_path', type=str, default="")
 
-beta = 50.
+beta = 1
 
 def str2bool(v):
     if v.lower() == 'true':
@@ -145,7 +145,7 @@ def train_batch(x_r):
     #loss corresponding to -log(D(G(z_p)))
     loss_GD = F.binary_cross_entropy(ld_p, y_real)
     #pixel wise matching loss and discriminator's feature matching loss
-    loss_G = 0.5 * ((x_f - x_r).pow(2).sum() + (fd_f - fd_r.detach()).pow(2).sum()) / batch_size
+    loss_G = 0.5 * ((x_f - x_r).pow(2).sum() + 0.01*(fd_f - fd_r.detach()).pow(2).sum()) / batch_size
 
     E_trainer.zero_grad()
     G_trainer.zero_grad()
@@ -198,8 +198,8 @@ def training():
 
         print("epoch:", epoch, "loss_D:", "%.4f"%T_loss_D, "loss_G:", "%.4f"%T_loss_G, "loss_GD:", "%.4f"%T_loss_GD, "loss_kld:", "%.4f"%T_loss_kld)
 
-        generate_samples(opt, "data/results/sample_%d.jpg" % epoch)
-        generate_reconstructions(opt, "data/results/recon_%d.jpg" % epoch, x)
+        generate_samples(opt, "/home/r_fiorista/mlp_group_project/tests/current/data/results/celebA_red_final_final/samples/sample_%d.jpg" % epoch)
+        generate_reconstructions(opt, "/home/r_fiorista/mlp_group_project/tests/current/data/results/celebA_red_final_final/recons/recon_%d.jpg" % epoch, x)
         T.save({
             'epoch': epoch + 1,
             "E_model": E.state_dict(),
@@ -223,7 +223,7 @@ def generate_samples(opt, img_name):
         for i, x in enumerate(x_p.cpu()):
             utils.save_image(x, img_name.replace('%',str(i)), normalize=True)
     else:
-        utils.save_image(x, img_name, normalize=True)
+        utils.save_image(x_p.cpu(), img_name, normalize=True)
 
 
 def generate_reconstructions(opt, img_name, img_batch):
@@ -248,4 +248,4 @@ if __name__ == "__main__":
         checkpoint = T.load(opt.model_path or save_path)
         G.load_state_dict(checkpoint['G_model'])
         #generate_samples(opt, "data/result_samples/sample_img_%.jpg")
-        generate_reconstructions(opt, "data/result_recon/recon_img_%.jpg", next(iter(train_loader))[0])
+        generate_reconstructions(opt, "data/result_recon/recon_img_%.jpg", copy.copy(next(iter(train_loader))[0]))
