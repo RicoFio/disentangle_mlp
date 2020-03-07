@@ -7,6 +7,7 @@ torch.cuda.manual_seed(8)
 from network_1 import VaeGan
 from torch.autograd import Variable
 import torch.nn as nn
+import torchvision.utils as utils
 from torch.utils.data import Dataset
 from tensorboardX import SummaryWriter
 from torch.optim import RMSprop,Adam,SGD
@@ -31,7 +32,6 @@ def parse_args():
     parser.add_argument("--n_batch_test",default=100,action="store",type=int,dest="n_batch_test")
     parser.add_argument("--num_workers_train",default=4,action="store",type=int,dest="num_workers_train")
     parser.add_argument("--num_workers_test",default=1,action="store",type=int,dest="num_workers_test")
-    
     parser.add_argument("--z_size",default=128,action="store",type=int,dest="z_size")
     parser.add_argument("--recon_level",default=3,action="store",type=int,dest="recon_level")
     parser.add_argument("--lambda_mse",default=1e-6,action="store",type=float,dest="lambda_mse")
@@ -42,6 +42,36 @@ def parse_args():
     parser.add_argument("--decay_equilibrium",default=1,action="store",type=float,dest="decay_equilibrium")
     parser.add_argument("--slurm",default=True,action="store",type=bool,dest="slurm")
     return parser.parse_args()
+
+# TODO not done
+def generate_samples(net, n_samples, n_hidden, single_img,  img_name):
+    pass
+    # net.eval()
+    # z_p = torch.randn(n_samples, n_hidden)
+    # z_p = z_p.to(device)
+
+    # with torch.autograd.no_grad():
+    #     x_p = G(z_p)
+    # if single_img:
+    #     for i, x in enumerate(x_p.cpu()):
+    #         utils.save_image(x, img_name.replace('%',str(i)), normalize=True)
+    # else:
+    #     utils.save_image(x, img_name, normalize=True)
+
+# TODO not done
+def generate_reconstructions(net, img_name, img_batch, single_img):
+    pass
+    # # Set encoder and decoder into evaluation mode
+    # net.eval()
+    # with torch.autograd.no_grad():
+    #     recon = G(E(img_batch)[0])
+    # if single_img:
+    #     for i,img in enumerate(recon.cpu()):
+    #         utils.save_image(img, img_name.replace('%',str(i)), normalize=True)
+    # else:
+    #     utils.save_image(img_batch, img_name.replace('%','origin'), normalize=True)
+    #     utils.save_image(recon.cpu(), img_name, normalize=True)
+
 
 if __name__ == "__main__":
 
@@ -274,6 +304,7 @@ if __name__ == "__main__":
         with data_batch,target_batch in next(iter(dataloader_test)):
             net.eval()
 
+            # reconstructions ! 
             data_in = Variable(data_batch, requires_grad=False).float().to(device)
             data_target = Variable(target_batch, requires_grad=False).float().to(device)
             out = net(data_in)
@@ -282,6 +313,7 @@ if __name__ == "__main__":
             out = make_grid(out, nrow=8)
             writer.add_image("reconstructed", out, step_index)
 
+            # samples ! 
             out = net(None, 100)
             out = out.data.cpu()
             out = (out + 1) / 2
