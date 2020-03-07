@@ -42,6 +42,7 @@ def arg_parse():
         else:
             return False
 
+    parser.add_argument('--fid', type=str2bool, default=False)
     parser.add_argument('--to_train', type=str2bool, default=True)
 
     return parser.parse_args()
