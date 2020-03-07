@@ -95,6 +95,7 @@ if __name__ == "__main__":
     decay_lr = args.decay_lr
     decay_equilibrium = args.decay_equilibrium
     slurm = args.slurm
+    start_epoch = 0
  
     writer = SummaryWriter(comment="_CELEBA_ALL")
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -102,8 +103,8 @@ if __name__ == "__main__":
     
     if load_path:
         checkpoint = torch.load(load_path)
-        step_index = checkpoint['epoch']
-        net = net.load_state_dict(checkpoint['net'])
+        start_epoch = checkpoint['epoch']
+        net.load_state_dict(checkpoint['net'])
 
     
     net = nn.DataParallel(net)
@@ -154,7 +155,7 @@ if __name__ == "__main__":
     if slurm:
         print(args)
     # for each epoch
-    for i in tqdm(range(n_epochs)):
+    for i in tqdm(range(start_epoch, n_epochs)):
         progress = progressbar.ProgressBar(min_value=0, max_value=batch_number, initial_value=0,
                                            widgets=widgets).start()
         # reset rolling average
@@ -303,6 +304,7 @@ if __name__ == "__main__":
         with data_batch,target_batch in next(iter(dataloader_test)):
             net.eval()
 
+            # reconstructions ! 
             data_in = Variable(data_batch, requires_grad=False).float().to(device)
             data_target = Variable(target_batch, requires_grad=False).float().to(device)
             out = net(data_in)
@@ -311,6 +313,7 @@ if __name__ == "__main__":
             out = make_grid(out, nrow=8)
             writer.add_image("reconstructed", out, step_index)
 
+            # samples ! 
             out = net(None, 100)
             out = out.data.cpu()
             out = (out + 1) / 2
