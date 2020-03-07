@@ -293,7 +293,7 @@ if __name__ == "__main__":
         # epoch = checkpoint['epoch']
 
         for sample in range(5000):
-            string = "./data/gan/fid-results/" + str(epoch) +  "_" + str(sample) + ".jpg"  
+            string = "./data/gan/fid_results/" + str(epoch) +  "_" + str(sample) + ".jpg"  
             print(string)
             generate_samples(string)        
     else: 
