@@ -49,7 +49,7 @@ parser.add_argument("--num_workers", type=int, default=4)
 parser.add_argument("--n_samples", type=int, default=36)
 parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8])
 parser.add_argument('--input_channels', type=int, default=3)
-parser.add_argument('--n_hidden', type=int, default=128)
+parser.add_argument('--n_hidden', type=int, default=64)
 parser.add_argument('--img_size', type=int, default=64)
 parser.add_argument('--w_kld', type=float, default=1)
 parser.add_argument('--w_loss_g', type=float, default=0.01)
@@ -64,6 +64,8 @@ def str2bool(v):
 
 parser.add_argument('--resume_training', type=str2bool, default=False)
 parser.add_argument('--to_train', type=str2bool, default=True)
+parser.add_argument('--single_img', type=str2bool, default=False)
+
 
 opt = parser.parse_args()
 print(opt)
@@ -140,7 +142,7 @@ def train_batch(x_r):
     #loss corresponding to -log(D(G(z_p)))
     loss_GD = F.binary_cross_entropy(ld_p, y_real)
     #pixel wise matching loss and discriminator's feature matching loss
-    loss_G = 0.5 * (0.01*(x_f - x_r).pow(2).sum() + (fd_f - fd_r.detach()).pow(2).sum()) / batch_size
+    loss_G = 0.5 * ((x_f - x_r).pow(2).sum() + (fd_f - fd_r.detach()).pow(2).sum()) / batch_size
 
     E_trainer.zero_grad()
     G_trainer.zero_grad()
@@ -228,11 +230,12 @@ def generate_reconstructions(opt, img_name, img_batch):
     D.eval()
     with T.autograd.no_grad():
         recon = G(E(img_batch)[0])
-    if not opt.to_train:
+    if not opt.to_train and opt.single_img:
         for i,img in enumerate(recon.cpu()):
             utils.save_image(img, img_name.replace('%',str(i)), normalize=True)
     else:
-        utils.save_image(img, img_name, normalize=True)
+        utils.save_image(img_batch, img_name.replace('%','origin'), normalize=True)
+        utils.save_image(recon.cpu(), img_name, normalize=True)
 
 
 if __name__ == "__main__":
