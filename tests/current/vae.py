@@ -11,39 +11,44 @@ from dataset import *
 from model import *
 from tqdm import tqdm
 
+def arg_parse():
+    parser = argparse.ArgumentParser(description='VAE MNIST Example')
+    parser.add_argument('--batch-size', type=int, default=128, metavar='N',
+                        help='input batch size for training (default: 128)')
+    parser.add_argument('--epochs', type=int, default=30, metavar='N',
+                        help='number of epochs to train (default: 10)')
+    parser.add_argument('--no-cuda', action='store_true', default=False,
+                        help='enables CUDA training')
+    parser.add_argument('--seed', type=int, default=1, metavar='S',
+                        help='random seed (default: 1)')
+    parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+                        help='how many batches to wait before logging training status')
+    parser.add_argument('--dataset', type=str, default="celebA")
+    parser.add_argument('--image_root', type=str, default="./data")
+    parser.add_argument("--num_workers", type=int, default=4)
+    parser.add_argument("--n_samples", type=int, default=10)
+    parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8]) # n_z
+    parser.add_argument('--input_channels', type=int, default=3)
+    parser.add_argument('--n_hidden', type=int, default=128)
+    parser.add_argument('--img_size', type=int, default=64)
+    parser.add_argument('--w_kld', type=float, default=1)
+    parser.add_argument('--w_loss_g', type=float, default=0.01)
+    parser.add_argument('--w_loss_gd', type=float, default=1)
+    parser.add_argument('--load_model', type=str, default="")
 
-parser = argparse.ArgumentParser(description='VAE MNIST Example')
-parser.add_argument('--batch-size', type=int, default=128, metavar='N',
-                    help='input batch size for training (default: 128)')
-parser.add_argument('--epochs', type=int, default=30, metavar='N',
-                    help='number of epochs to train (default: 10)')
-parser.add_argument('--no-cuda', action='store_true', default=False,
-                    help='enables CUDA training')
-parser.add_argument('--seed', type=int, default=1, metavar='S',
-                    help='random seed (default: 1)')
-parser.add_argument('--log-interval', type=int, default=10, metavar='N',
-                    help='how many batches to wait before logging training status')
+    def str2bool(v):
+        if v.lower() == 'true':
+            return True
+        else:
+            return False
 
+    parser.add_argument('--to_train', type=str2bool, default=True)
 
-
-parser.add_argument('--dataset', type=str, default="celebA")
-parser.add_argument('--image_root', type=str, default="./data")
-parser.add_argument("--num_workers", type=int, default=4)
-parser.add_argument("--n_samples", type=int, default=10)
-parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8]) # n_z
-parser.add_argument('--input_channels', type=int, default=3)
-parser.add_argument('--n_hidden', type=int, default=128)
-parser.add_argument('--img_size', type=int, default=64)
-parser.add_argument('--w_kld', type=float, default=1)
-parser.add_argument('--w_loss_g', type=float, default=0.01)
-parser.add_argument('--w_loss_gd', type=float, default=1)
-parser.add_argument('--load_model', type=str, default="")
+    return parser.parse_args()
 
 save_path = "./data/vae/models/model_%.tar"
 
-
-opt = parser.parse_args()
-# opt.cuda = not opt.no_cuda and torch.cuda.is_available()
+opt = arg_parse()
 
 torch.manual_seed(opt.seed)
 
@@ -196,24 +201,6 @@ def train(epoch):
           epoch, train_loss / len(train_loader.dataset)))
 
 
-# def test(epoch):
-#     model.eval()
-#     test_loss = 0
-#     with torch.no_grad():
-#         for i, (data, _) in enumerate(test_loader):
-#             data = data.to(device)
-#             recon_batch, mu, logvar = model(data)
-#             test_loss += loss_function(recon_batch, data, mu, logvar).item()
-#             if i == 0:
-#                 n = min(data.size(0), 8)
-#                 comparison = torch.cat([data[:n],
-#                                       recon_batch[:n]])
-#                 save_image(comparison.cpu(),
-#                          'data/results-vae/reconstruction_' + str(epoch) + '.png', nrow=n)
-
-#     test_loss /= len(test_loader.dataset)
-#     print('====> Test set loss: {:.4f}'.format(test_loss))
-
 if __name__ == "__main__":
     if opt.load_model:
         checkpoint = torch.load(opt.load_model)
@@ -221,18 +208,35 @@ if __name__ == "__main__":
         optimizer.load_state_dict(checkpoint['optimizer'])
         epoch = checkpoint['epoch']
 
+    if opt.to_train:
+        for epoch in tqdm(range(epoch, opt.epochs + 1)):
+            train(epoch)
+            with torch.no_grad():
+                sample = torch.randn(10, opt.n_hidden).to(device)
+                sample = model.module.decode(sample).cpu()
+                save_image(sample.cpu(),
+                        './data/vae/results/sample_' + str(epoch) + '.png')
+                save_image(sample.cpu(),
+                        './data/vae/results/recon_' + str(epoch) + '.png')
 
-    for epoch in tqdm(range(epoch, opt.epochs + 1)):
-        train(epoch)
-        # test(epoch)
-        with torch.no_grad():
-            sample = torch.randn(10, opt.n_hidden).to(device)
-            sample = model.module.decode(sample).cpu()
+
+                torch.save({
+                'epoch': epoch + 1,
+                "VAE_model": model.module.state_dict(),
+                'optimizer': optimizer.state_dict()}, save_path.replace('%',str(epoch+1)))
+    elif opt.load_model and not opt.fid:
+        sample = torch.randn(80, opt.n_hidden).to(device)
+        sample = model.module.decode(sample).cpu()
+        save_image(sample.cpu(),
+                        './data/vae/quick_results/sample_' + str(epoch) + '.png')
+        batch = next(iter(train_loader))
+        batch = model.module.decode(model.module.encode(sample).cpu()).cpu()
+        save_image(batch.cpu(),
+                        './data/vae/quick_results/recon_' + str(epoch) + '.png')
+    elif opt.load_model and opt.fid:
+        sample = torch.randn(5000, opt.n_hidden).to(device)
+        sample = model.module.decode(sample).cpu()
+
+        for s in sample:
             save_image(sample.cpu(),
-                       './data/vae/results/sample_' + str(epoch) + '.png')
-
-
-            torch.save({
-            'epoch': epoch + 1,
-            "VAE_model": model.module.state_dict(),
-            'optimizer': optimizer.state_dict()}, save_path.replace('%',str(epoch+1)))
+                        './data/vae/fid_results/sample_' + str(epoch) + '.png')
