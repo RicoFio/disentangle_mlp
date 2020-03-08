@@ -174,7 +174,6 @@ netD.apply(weights_init)
 model.apply(weights_init)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
 optimizerD = optim.Adam(netD.parameters(), lr=1e-3)
-optimizerG = optim.Adam(model.module.decode.parameters(), lr=1e-3)
 
 # Initialize BCELoss function
 criterion = nn.BCELoss()
@@ -251,7 +250,7 @@ def train(epoch):
         errG.backward()
         loss = loss_function(recon_batch.to(device), data, mu.to(device), logvar.to(device))
         loss.backward()
-        optimizerG.step()
+        optimizer.step()
 
         # ENCODER 
         model.zero_grad()
