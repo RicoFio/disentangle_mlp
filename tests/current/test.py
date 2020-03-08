@@ -170,7 +170,6 @@ model = model.to(device)
 
 netD = Discriminator_celeba(opt).to(device)
 netD.apply(weights_init)
-netD.apply(weights_init)
 
 model.apply(weights_init)
 optimizer = optim.Adam(model.parameters(), lr=1e-3)
