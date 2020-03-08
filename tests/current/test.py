@@ -238,7 +238,15 @@ def train(epoch):
         model.module.features.requires_grad = False
         model.module.x_to_mu.requires_grad = False
         model.module.x_to_logvar.requires_grad = False
-
+        model.module.preprocess.requires_grad = True
+        model.module.deconv1.requires_grad = True
+        model.module.act1.requires_grad = True
+        model.module.deconv2.requires_grad = True
+        model.module.act2.requires_grad = True
+        model.module.deconv3.requires_grad = True
+        model.module.act3.requires_grad = True
+        model.module.deconv4.requires_grad = True
+        model.module.activation.requires_grad = True
         recon_batch, mu, logvar = model(data)
 
         # Since we just updated D, perform another forward pass of all-fake batch through D
