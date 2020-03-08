@@ -216,7 +216,7 @@ def train(epoch):
         # Generate batch of latent vectors
         noise = torch.randn(data.size()[0], 128, device=device)
         # Generate fake image batch with G
-        fake = netG(noise)
+        fake = model.module.decode(noise)
         label.fill_(fake_label)
         # Classify all fake batch with D
         output, _ = netD(fake.detach())
