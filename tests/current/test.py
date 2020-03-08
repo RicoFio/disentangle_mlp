@@ -292,7 +292,7 @@ if __name__ == "__main__":
         epoch = checkpoint['epoch']
 
     if opt.to_train:
-        for epoch in tqdm(range(epoch, opt.epochs + 1)):
+        for epoch in tqdm(range(30)):
             train(epoch)
             with torch.no_grad():
                 sample = torch.randn(10, opt.n_hidden).to(device)
