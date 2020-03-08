@@ -288,8 +288,16 @@ def train(epoch):
                 100. * batch_idx / len(train_loader),
                 loss.item() / len(data)))
 
+        if batch_idx == 100:
+            save_image(data.cpu(),
+                        './data/vae/results/orig_' + str(epoch) + '.png')
+            save_image(recon_batch.cpu(),
+                        './data/vae/results/recon_' + str(epoch) + '.png')
+
+
     print('====> Epoch: {} Average loss: {:.4f}'.format(
           epoch, train_loss / len(train_loader.dataset)))
+
 
 
 if __name__ == "__main__":
@@ -307,9 +315,6 @@ if __name__ == "__main__":
                 sample = model.module.decode(sample).cpu()
                 save_image(sample.cpu(),
                         './data/vae/results/sample_' + str(epoch) + '.png')
-                save_image(sample.cpu(),
-                        './data/vae/results/recon_' + str(epoch) + '.png')
-
 
                 torch.save({
                 'epoch': epoch + 1,
