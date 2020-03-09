@@ -49,7 +49,7 @@ def arg_parse():
 
     return parser.parse_args()
 
-save_path = "./data/vae/models/model_%.tar"
+save_path = "./data/vaegan/models/model_%.tar"
 
 opt = arg_parse()
 
@@ -290,9 +290,9 @@ def train(epoch):
 
         if batch_idx == 100:
             save_image(data.cpu(),
-                        './data/vae/results/orig_' + str(epoch) + '.png')
+                        './data/vaegan/results/orig_' + str(epoch) + '.png')
             save_image(recon_batch.cpu(),
-                        './data/vae/results/recon_' + str(epoch) + '.png')
+                        './data/vaegan/results/recon_' + str(epoch) + '.png')
 
 
     print('====> Epoch: {} Average loss: {:.4f}'.format(
@@ -303,7 +303,7 @@ def train(epoch):
 if __name__ == "__main__":
     if opt.load_model:
         checkpoint = torch.load(opt.load_model)
-        model.load_state_dict(checkpoint['VAE_model'])
+        model.load_state_dict(checkpoint['VAEGAN_model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         epoch = checkpoint['epoch']
 
@@ -314,25 +314,29 @@ if __name__ == "__main__":
                 sample = torch.randn(10, opt.n_hidden).to(device)
                 sample = model.module.decode(sample).cpu()
                 save_image(sample.cpu(),
-                        './data/vae/results/sample_' + str(epoch) + '.png')
+                        './data/vaegan/results/sample_' + str(epoch) + '.png')
+                batch = next(iter(train_loader))
+                batch = model.module.decode(model.module.encode(sample).cpu()).cpu()
+                save_image(batch.cpu(),
+                                './data/vaegan/quick_results/recon_' + str(epoch) + '.png')
 
                 torch.save({
                 'epoch': epoch + 1,
-                "VAE_model": model.module.state_dict(),
+                "VAEGAN_model": model.module.state_dict(),
                 'optimizer': optimizer.state_dict()}, save_path.replace('%',str(epoch+1)))
     elif opt.load_model and not opt.fid:
         sample = torch.randn(80, opt.n_hidden).to(device)
         sample = model.module.decode(sample).cpu()
         save_image(sample.cpu(),
-                        './data/vae/quick_results/sample_' + str(epoch) + '.png')
+                        './data/vaegan/quick_results/sample_' + str(epoch) + '.png')
         batch = next(iter(train_loader))
         batch = model.module.decode(model.module.encode(sample).cpu()).cpu()
         save_image(batch.cpu(),
-                        './data/vae/quick_results/recon_' + str(epoch) + '.png')
+                        './data/vaegan/quick_results/recon_' + str(epoch) + '.png')
     elif opt.load_model and opt.fid:
         sample = torch.randn(5000, opt.n_hidden).to(device)
         sample = model.module.decode(sample).cpu()
 
         for s in sample:
             save_image(sample.cpu(),
-                        './data/vae/fid_results/sample_' + str(epoch) + '.png')
+                        './data/vaegan/fid_results/sample_' + str(epoch) + '.png')

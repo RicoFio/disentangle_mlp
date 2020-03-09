@@ -220,9 +220,10 @@ if __name__ == "__main__":
                 sample = model.module.decode(sample).cpu()
                 save_image(sample.cpu(),
                         './data/vae/results/sample_' + str(epoch) + '.png')
-                save_image(sample.cpu(),
-                        './data/vae/results/recon_' + str(epoch) + '.png')
-
+                batch = next(iter(train_loader))
+                batch = model.module.decode(model.module.encode(sample).cpu()).cpu()
+                save_image(batch.cpu(),
+                                './data/vae/quick_results/recon_' + str(epoch) + '.png')
 
                 torch.save({
                 'epoch': epoch + 1,
