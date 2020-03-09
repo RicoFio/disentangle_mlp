@@ -42,7 +42,7 @@ def get_data_loader(opt):
         ])
         train_dataset = datasets.ImageFolder(root=opt.image_root, transform=my_transform)
         train_loader = DataLoader(dataset=train_dataset, batch_size=opt.batch_size, shuffle=True, num_workers=opt.num_workers)
-        test_loader = None
+        test_loader = DataLoader(dataset=train_dataset, batch_size=5000, shuffle=False, num_workers=opt.num_workers)
 
     return train_loader, test_loader
 

@@ -1,9 +1,11 @@
 import os
+from pathlib import Path
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import argparse
 import torch
 import torch.utils.data
+import numpy as np
 from torch import nn, optim
 from torch.nn import functional as F
 from torchvision import datasets, transforms
@@ -13,17 +15,23 @@ from dataset import *
 from model import *
 from tqdm import tqdm
 
+from datetime import datetime 
+
+import json
+
+from tests.current.fid_score import get_fid
+
 def arg_parse():
     parser = argparse.ArgumentParser(description='VAE MNIST Example')
-    parser.add_argument('--batch-size', type=int, default=128, metavar='N',
+    parser.add_argument('--batch_size', type=int, default=128, metavar='N',
                         help='input batch size for training (default: 128)')
     parser.add_argument('--epochs', type=int, default=30, metavar='N',
                         help='number of epochs to train (default: 10)')
-    parser.add_argument('--no-cuda', action='store_true', default=False,
+    parser.add_argument('--no_cuda', action='store_true', default=False,
                         help='enables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
-    parser.add_argument('--log-interval', type=int, default=10, metavar='N',
+    parser.add_argument('--log_interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
     parser.add_argument('--dataset', type=str, default="celebA")
     parser.add_argument('--image_root', type=str, default="./data")
@@ -37,6 +45,9 @@ def arg_parse():
     parser.add_argument('--w_loss_g', type=float, default=0.01)
     parser.add_argument('--w_loss_gd', type=float, default=1)
     parser.add_argument('--load_model', type=str, default="")
+    parser.add_argument('--save_path', type=str, default="./data/vaegan")
+    parser.add_argument('--log_path', type=str, default="./data/vaegan/log")
+    parser.add_argument('--fid_path_pretrained', type=str, default="/home/shared/save_riccardo/fid/celeba/fid_stats_celeba.npz")
 
     def str2bool(v):
         if v.lower() == 'true':
@@ -49,15 +60,23 @@ def arg_parse():
 
     return parser.parse_args()
 
-save_path = "./data/vaegan/models/model_%.tar"
-
 opt = arg_parse()
+
+save_path = opt.model_save_path + "/models/model_%.tar"
+
+# Create necessary folder structure
+Path(opt.save_path).mkdir(parents=True, exist_ok=True)
+Path(opt.save_path + '/models').mkdir(parents=True, exist_ok=True)
+Path(opt.save_path + '/results').mkdir(parents=True, exist_ok=True)
+Path(opt.save_path + '/quick_results').mkdir(parents=True, exist_ok=True)
+Path(opt.save_path + '/fid_results').mkdir(parents=True, exist_ok=True)
+Path(opt.log_path).mkdir(parents=True, exist_ok=True)
 
 torch.manual_seed(opt.seed)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-train_loader, _ = get_data_loader(opt)
+train_loader, test_loader = get_data_loader(opt)
 
 class VAE(nn.Module):
     def __init__(self, opt, representation_size=64):
@@ -167,6 +186,24 @@ model = VAE(opt=opt)
 model = torch.nn.DataParallel(model)
 model = model.to(device)
 
+log_path = ""
+
+def set_up_log(path=opt.log_path):
+    log_file = f"/log_{str(datetime.now)}.json"
+    log_path= path + log_file
+
+    args = vars(opt)
+    empty_log = {
+        "meta_data" : {
+            "file": os.path.basename(__file__),
+            "datetime": str(datetime.now),
+            "args": args
+        },
+        "output" : []
+    }
+
+    write_json(empty_log)
+        
 
 netD = Discriminator_celeba(opt).to(device)
 netD.apply(weights_init)
@@ -189,8 +226,6 @@ def loss_function(recon_x, x, mu, logvar):
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
     return MSE + KLD
-
-
 
 def train(epoch):
     model.train()
@@ -282,25 +317,53 @@ def train(epoch):
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
-        if batch_idx % opt.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader),
-                loss.item() / len(data)))
 
-        if batch_idx == 100:
-            save_image(data.cpu(),
-                        './data/vaegan/results/orig_' + str(epoch) + '.png')
-            save_image(recon_batch.cpu(),
-                        './data/vaegan/results/recon_' + str(epoch) + '.png')
+    fid = get_fid(path_data, opt.fid_path_pretrained)
+    print(f'====> Epoch: {epoch} Average loss: {train_loss / len(train_loader.dataset):.4f} FID: {}')
 
+def generate_reconstructions(epoch, results_path="results", singles=True, store_origs=False, fid=True):
+    with torch.no_grad():
+        orig_imgs = next(iter(test_loader)) if fid else next(iter(train_loader))
+        batch = model.module.decode(model.module.encode(orig_imgs).cpu()).cpu()
+        if singles:
+            for x in batch:
+                save_image(x.cpu(), opt.save_path + f'/{results_path}/recon_' + str(epoch) + '.png')
+        else:
+            save_image(batch.cpu(), opt.save_path + f'/{results_path}/recon_' + str(epoch) + '.png')
 
-    print('====> Epoch: {} Average loss: {:.4f}'.format(
-          epoch, train_loss / len(train_loader.dataset)))
+        if store_origs:
+            save_image(orig_imgs.cpu(), opt.save_path + '/originals/origin_' + str(epoch) + '.png')
 
+def generate_samples(epoch, n_samples, results_path="results", singles=True):
+    with torch.no_grad():
+        sample = torch.randn(n_samples, opt.n_hidden).to(device)
+        sample = model.module.decode(sample).cpu()
+        if singles:
+            for x in sample:
+                save_image(x.cpu(), opt.save_path + f'/{results_path}/sample_' + str(epoch) + '.png')
+        else:
+            save_image(sample.cpu(), opt.save_path + f'/{results_path}/sample_' + str(epoch) + '.png')
 
+# function to add to JSON 
+def write_json(data): 
+    with open(log_path,'w') as f: 
+        json.dump(data, f, indent=4) 
+      
+def log(results):
+    with open(log_path) as json_file: 
+        data = json.load(json_file) 
+        
+        temp = data['output'] 
+        temp.append(results) 
+        
+    write_json(data)  
 
 if __name__ == "__main__":
+    if opt.log_path:
+        set_up_log(opt.log_path)
+    else:
+        set_up_log()
+
     if opt.load_model:
         checkpoint = torch.load(opt.load_model)
         model.load_state_dict(checkpoint['VAEGAN_model'])
@@ -311,32 +374,14 @@ if __name__ == "__main__":
         for epoch in tqdm(range(30)):
             train(epoch)
             with torch.no_grad():
-                sample = torch.randn(10, opt.n_hidden).to(device)
-                sample = model.module.decode(sample).cpu()
-                save_image(sample.cpu(),
-                        './data/vaegan/results/sample_' + str(epoch) + '.png')
-                batch = next(iter(train_loader))
-                batch = model.module.decode(model.module.encode(sample).cpu()).cpu()
-                save_image(batch.cpu(),
-                                './data/vaegan/quick_results/recon_' + str(epoch) + '.png')
-
+                
                 torch.save({
                 'epoch': epoch + 1,
                 "VAEGAN_model": model.module.state_dict(),
                 'optimizer': optimizer.state_dict()}, save_path.replace('%',str(epoch+1)))
     elif opt.load_model and not opt.fid:
-        sample = torch.randn(80, opt.n_hidden).to(device)
-        sample = model.module.decode(sample).cpu()
-        save_image(sample.cpu(),
-                        './data/vaegan/quick_results/sample_' + str(epoch) + '.png')
-        batch = next(iter(train_loader))
-        batch = model.module.decode(model.module.encode(sample).cpu()).cpu()
-        save_image(batch.cpu(),
-                        './data/vaegan/quick_results/recon_' + str(epoch) + '.png')
+        generate_reconstructions(epoch, results_path="quick_results", singles=False, fid=False)
+        generate_samples(epoch, n_samples=80,results_path="quick_results", singles=False)
     elif opt.load_model and opt.fid:
-        sample = torch.randn(5000, opt.n_hidden).to(device)
-        sample = model.module.decode(sample).cpu()
-
-        for s in sample:
-            save_image(sample.cpu(),
-                        './data/vaegan/fid_results/sample_' + str(epoch) + '.png')
+        generate_reconstructions(epoch, results_path="fid_results", singles=False, fid=False)
+        generate_samples(epoch, n_samples=80,results_path="fid_results", singles=False)
