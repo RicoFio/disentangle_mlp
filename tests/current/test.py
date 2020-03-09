@@ -386,7 +386,7 @@ if __name__ == "__main__":
                 torch.save({
                 'epoch': epoch + 1,
                 "encoder_decoder_model": model.module.state_dict(),
-                "discriminator_model": netD.module.state_dict(),
+                "discriminator_model": netD.state_dict(),
                 'encoder_decoder_optimizer': optimizer.state_dict(),
                 'discriminator_optimizer': optimizerD.state_dict(),
                 }, save_path.replace('%',str(epoch+1)))
