@@ -202,7 +202,6 @@ def set_up_log(path=opt.log_path):
 
     write_json(empty_log)
         
-
 netD = Discriminator_celeba(opt).to(device)
 netD.apply(weights_init)
 
