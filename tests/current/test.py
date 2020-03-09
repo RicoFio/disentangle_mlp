@@ -19,7 +19,7 @@ from datetime import datetime
 
 import json
 
-from tests.current.fid_score import get_fid
+from fid import get_fid
 
 def arg_parse():
     parser = argparse.ArgumentParser(description='VAE MNIST Example')
@@ -62,7 +62,7 @@ def arg_parse():
 
 opt = arg_parse()
 
-save_path = opt.model_save_path + "/models/model_%.tar"
+save_path = opt.save_path + "/models/model_%.tar"
 
 # Create necessary folder structure
 Path(opt.save_path).mkdir(parents=True, exist_ok=True)
@@ -189,14 +189,15 @@ model = model.to(device)
 log_path = ""
 
 def set_up_log(path=opt.log_path):
-    log_file = f"/log_{str(datetime.now)}.json"
+    global log_path
+    log_file = f"/log_{str(datetime.now())}.json"
     log_path= path + log_file
 
     args = vars(opt)
     empty_log = {
         "meta_data" : {
             "file": os.path.basename(__file__),
-            "datetime": str(datetime.now),
+            "datetime": str(datetime.now()),
             "args": args
         },
         "output" : []
@@ -318,7 +319,7 @@ def train(epoch):
         train_loss += loss.item()
         optimizer.step()
 
-    generate_samples(epoch, 5000)
+    generate_samples(epoch, 100)
     fid = get_fid(opt.save_path + '/fid_results/', opt.fid_path_pretrained)
     avg_loss = train_loss / len(train_loader.dataset)
     log({"Epoch":epoch, "Avg Loss":avg_loss, "FID":fid})
@@ -326,13 +327,13 @@ def train(epoch):
 
 def generate_reconstructions(epoch, results_path="results", singles=True, store_origs=False, fid=True):
     with torch.no_grad():
-        orig_imgs = next(iter(test_loader)) if fid else next(iter(train_loader))
-        batch = model.module.decode(model.module.encode(orig_imgs).cpu()).cpu()
+        orig_imgs, _ = next(iter(test_loader)) if fid else next(iter(train_loader))
+        batch = model(orig_imgs)[0].cpu()
         if singles:
             for i,x in enumerate(batch):
                 save_image(x.cpu(), opt.save_path + f'/{"fid_results" if fid else results_path}/recon_{i}_{str(epoch)}.png')
         else:
-            save_image(batch.cpu(), opt.save_path + f'/{results_path}/recon_{i}_{str(epoch)}.png')
+            save_image(batch.cpu(), opt.save_path + f'/{results_path}/recon_{str(epoch)}.png')
 
         if store_origs:
             save_image(orig_imgs.cpu(), opt.save_path + f'/originals/origin_{str(epoch)}.png')
@@ -388,5 +389,5 @@ if __name__ == "__main__":
         generate_reconstructions(epoch, results_path="quick_results", singles=False, fid=False)
         generate_samples(epoch, n_samples=80,results_path="quick_results", singles=False)
     elif opt.load_model and opt.fid:
-        generate_reconstructions(epoch, results_path="fid_results", singles=False, fid=False)
-        generate_samples(epoch, n_samples=80,results_path="fid_results", singles=False)
+        generate_reconstructions(epoch, results_path="fid_results")
+        generate_samples(epoch, n_samples=1000,results_path="fid_results")
