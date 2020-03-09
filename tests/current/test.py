@@ -1,6 +1,10 @@
+############################
+# Imports
+############################
+
+
 import os
 from pathlib import Path
-# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 import argparse
 import torch
@@ -21,14 +25,53 @@ import json
 
 from fid import get_fid
 
+############################
+# Globals
+opt = None
+model = None
+netD = None
+optimizer = None
+optimizerD = None
+criterion = None
+train_loader = None
+test_loader = None
+log_path = ''
+save_path = ''
+device = None
+#############################
+
+def set_up_globals():
+    global opt, model, netD, optimizer, optimizerD, criterion, train_loader, test_loader, log_path, save_path, device
+
+    opt = arg_parse()
+    set_up_log()
+    save_path = opt.save_path + "/models/model_%.tar"
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    torch.manual_seed(opt.seed)
+
+    # Load data 
+    train_loader, test_loader = get_data_loader(opt)
+
+    model = VAE(opt=opt)
+    model = torch.nn.DataParallel(model)
+    model = model.to(device)
+    model.apply(weights_init)
+       
+    netD = Discriminator_celeba(opt).to(device)
+    netD.apply(weights_init)
+
+    optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    optimizerD = optim.Adam(netD.parameters(), lr=1e-3)
+
+    # Initialize BCELoss function
+    criterion = nn.BCELoss()
+
 def arg_parse():
     parser = argparse.ArgumentParser(description='VAE MNIST Example')
     parser.add_argument('--batch_size', type=int, default=128, metavar='N',
                         help='input batch size for training (default: 128)')
     parser.add_argument('--epochs', type=int, default=30, metavar='N',
                         help='number of epochs to train (default: 10)')
-    parser.add_argument('--no_cuda', action='store_true', default=False,
-                        help='enables CUDA training')
     parser.add_argument('--seed', type=int, default=1, metavar='S',
                         help='random seed (default: 1)')
     parser.add_argument('--log_interval', type=int, default=10, metavar='N',
@@ -57,134 +100,6 @@ def arg_parse():
 
     return parser.parse_args()
 
-opt = arg_parse()
-
-save_path = opt.save_path + "/models/model_%.tar"
-
-# Create necessary folder structure
-Path(opt.save_path).mkdir(parents=True, exist_ok=True)
-Path(opt.save_path + '/models').mkdir(parents=True, exist_ok=True)
-Path(opt.save_path + '/results').mkdir(parents=True, exist_ok=True)
-Path(opt.save_path + '/quick_results').mkdir(parents=True, exist_ok=True)
-Path(opt.save_path + '/fid_results').mkdir(parents=True, exist_ok=True)
-Path(opt.log_path).mkdir(parents=True, exist_ok=True)
-
-torch.manual_seed(opt.seed)
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-train_loader, test_loader = get_data_loader(opt)
-
-class VAE(nn.Module):
-    def __init__(self, opt, representation_size=64):
-        super(VAE, self).__init__()
-
-        # ENCODER 
-        self.input_channels = opt.input_channels
-        self.n_hidden = opt.n_hidden
-        self.features = nn.Sequential(
-            # nc x 64 x 64
-            nn.Conv2d(self.input_channels, representation_size, 5, stride=2, padding=2),
-            nn.BatchNorm2d(representation_size),
-            nn.ReLU(),
-            # hidden_size x 32 x 32
-            nn.Conv2d(representation_size, representation_size*2, 5, stride=2, padding=2),
-            nn.BatchNorm2d(representation_size * 2),
-            nn.ReLU(),
-            # hidden_size*2 x 16 x 16
-            nn.Conv2d(representation_size*2, representation_size*4, 5, stride=2, padding=2),
-            nn.BatchNorm2d(representation_size * 4),
-            nn.ReLU())
-
-        self.x_to_mu = nn.Sequential(
-            nn.Linear(representation_size*4*8*8, 2048),
-            nn.BatchNorm1d(2048),
-            nn.ReLU(),
-            nn.Linear(2048, self.n_hidden))
-        
-        self.x_to_logvar = nn.Sequential(
-            nn.Linear(representation_size*4*8*8, 2048),
-            nn.BatchNorm1d(2048),
-            nn.ReLU(),
-            nn.Linear(2048, self.n_hidden))
-
-
-        # DECODER 
-        self.input_size = opt.n_hidden
-        self.representation_size2 = opt.n_z
-
-        dim = self.representation_size2[0] * self.representation_size2[1] * self.representation_size2[2]
-        self.preprocess = nn.Sequential(
-            nn.Linear(self.input_size, dim),
-            nn.BatchNorm1d(dim),
-            nn.ReLU())
-            # 256 x 8 x 8
-        self.deconv1 = nn.ConvTranspose2d(self.representation_size2[0], 256, 5, stride=2, padding=2)
-        self.act1 = nn.Sequential(nn.BatchNorm2d(256),
-                                  nn.ReLU())
-            # 256 x 16 x 16
-        self.deconv2 = nn.ConvTranspose2d(256, 128, 5, stride=2, padding=2)
-        self.act2 = nn.Sequential(nn.BatchNorm2d(128),
-                                  nn.ReLU())
-            # 128 x 32 x 32
-        self.deconv3 = nn.ConvTranspose2d(128, 32, 5, stride=2, padding=2)
-        self.act3 = nn.Sequential(nn.BatchNorm2d(32),
-                                  nn.ReLU())
-            # 32 x 64 x 64
-        self.deconv4 = nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2)
-            # 3 x 64 x 64
-        self.activation = nn.Tanh()
-
-
-    def encode(self, x):
-        batch_size = x.size()[0]
-        inner = self.features(x).squeeze()
-        inner = inner.view(batch_size, -1)
-        mu = self.x_to_mu(inner)
-        logvar = self.x_to_logvar(inner)
-        return mu, logvar
-
-    def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5*logvar)
-        eps = torch.randn_like(std)
-        return mu + eps*std
-
-    def decode(self, code):
-        bs = code.size()[0]
-        preprocessed_codes = self.preprocess(code)
-        preprocessed_codes = preprocessed_codes.view(-1,
-                                                     self.representation_size2[0],
-                                                     self.representation_size2[1],
-                                                     self.representation_size2[2])
-        output = self.deconv1(preprocessed_codes, output_size=(bs, 256, 16, 16))
-        output = self.act1(output)
-        output = self.deconv2(output, output_size=(bs, 128, 32, 32))
-        output = self.act2(output)
-        output = self.deconv3(output, output_size=(bs, 32, 64, 64))
-        output = self.act3(output)
-        output = self.deconv4(output, output_size=(bs, 3, 64, 64))
-        output = self.activation(output)
-        return output
-
-    def forward(self, x):
-        mu, logvar = self.encode(x)
-        z = self.reparameterize(mu, logvar)
-        return self.decode(z), mu, logvar
-
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Conv') != -1:
-        nn.init.normal_(m.weight.data, 0.0, 0.02)
-    elif classname.find('BatchNorm') != -1:
-        nn.init.normal_(m.weight.data, 1.0, 0.02)
-        nn.init.constant_(m.bias.data, 0)
-
-model = VAE(opt=opt)
-model = torch.nn.DataParallel(model)
-model = model.to(device)
-
-log_path = ""
-
 def set_up_log(path=opt.log_path):
     global log_path
     log_file = f"/log_{str(datetime.now())}.json"
@@ -201,19 +116,18 @@ def set_up_log(path=opt.log_path):
     }
 
     write_json(empty_log)
-        
-netD = Discriminator_celeba(opt).to(device)
-netD.apply(weights_init)
-
-model.apply(weights_init)
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
-optimizerD = optim.Adam(netD.parameters(), lr=1e-3)
-
-# Initialize BCELoss function
-criterion = nn.BCELoss()
+ 
+# Create necessary folder structure
+def set_up_dirs():
+    Path(opt.save_path).mkdir(parents=True, exist_ok=True)
+    Path(opt.save_path + '/models').mkdir(parents=True, exist_ok=True)
+    Path(opt.save_path + '/results').mkdir(parents=True, exist_ok=True)
+    Path(opt.save_path + '/quick_results').mkdir(parents=True, exist_ok=True)
+    Path(opt.save_path + '/fid_results').mkdir(parents=True, exist_ok=True)
+    Path(opt.log_path).mkdir(parents=True, exist_ok=True)
 
 # Reconstruction + KL divergence losses summed over all elements and batch
-def loss_function(recon_x, x, mu, logvar):
+def reconstruction_loss(recon_x, x, mu, logvar):
     MSE = F.mse_loss(recon_x, x, reduction='sum')
 
     # see Appendix B from VAE paper:
@@ -233,6 +147,8 @@ def train(epoch):
         real_label = np.random.choice(a=[0.1,0.9], p=[0.05, 0.95])
         data = data.to(device)
 
+        ### Discriminator ###
+
         netD.zero_grad()
 
         label = torch.full((data.size()[0],), real_label, device=device)
@@ -242,7 +158,6 @@ def train(epoch):
         errD_real = criterion(output, label)
         # Calculate gradients for D in backward pass
         errD_real.backward()
-        # D_x = output.mean().item()
 
         ## Train with all-fake batch
         # Generate batch of latent vectors
@@ -257,28 +172,17 @@ def train(epoch):
 
         # Calculate the gradients for this batch
         errD_fake.backward()
-        D_G_z1 = output.mean().item()
-        # Add the gradients from the all-real and all-fake batches
-        errD = errD_real + errD_fake
         # Update D
         optimizerD.step()
+
+        ### Decoder ###
 
         model.zero_grad()
         label.fill_(real_label)  # fake labels are real for generator cost
 
         # encoder to reuires grad = False
-        model.module.features.requires_grad = False
-        model.module.x_to_mu.requires_grad = False
-        model.module.x_to_logvar.requires_grad = False
-        model.module.preprocess.requires_grad = True
-        model.module.deconv1.requires_grad = True
-        model.module.act1.requires_grad = True
-        model.module.deconv2.requires_grad = True
-        model.module.act2.requires_grad = True
-        model.module.deconv3.requires_grad = True
-        model.module.act3.requires_grad = True
-        model.module.deconv4.requires_grad = True
-        model.module.activation.requires_grad = True
+        model.module.encoder_set_grad(False)
+        model.module.decoder_set_grad(True)
         recon_batch, mu, logvar = model(data)
 
         # Since we just updated D, perform another forward pass of all-fake batch through D
@@ -288,36 +192,27 @@ def train(epoch):
         errG = criterion(output, label)
         # Calculate gradients for G
         errG.backward()
-        loss = loss_function(recon_batch.to(device), data, mu.to(device), logvar.to(device))
+        loss = reconstruction_loss(recon_batch.to(device), data, mu.to(device), logvar.to(device))
         loss.backward()
         optimizer.step()
 
-        # ENCODER 
+        ### Encoder ###
         model.zero_grad()
-        # encoder to reuires grad = False
-        model.module.features.requires_grad = True
-        model.module.x_to_mu.requires_grad = True
-        model.module.x_to_logvar.requires_grad = True
-        model.module.preprocess.requires_grad = False
-        model.module.deconv1.requires_grad = False
-        model.module.act1.requires_grad = False
-        model.module.deconv2.requires_grad = False
-        model.module.act2.requires_grad = False
-        model.module.deconv3.requires_grad = False
-        model.module.act3.requires_grad = False
-        model.module.deconv4.requires_grad = False
-        model.module.activation.requires_grad = False
+        model.module.encoder_set_grad(True)
+        model.module.decoder_set_grad(False)
 
         recon_batch, mu, logvar = model(data)
 
-        loss = loss_function(recon_batch.to(device), data, mu.to(device), logvar.to(device))
+        loss = reconstruction_loss(recon_batch.to(device), data, mu.to(device), logvar.to(device))
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
 
+    # Calculate FID score
     generate_samples(epoch, 100)
     fid = get_fid(opt.save_path + '/fid_results/', opt.fid_path_pretrained)
 
+    # Log epoch statistics
     avg_loss = train_loss / len(train_loader.dataset)
     log({"Epoch":epoch, "Avg Loss":avg_loss, "FID":fid})
     print(f'====> Epoch: {epoch} Average loss: {avg_loss:.4f} FID: {fid}')
@@ -360,10 +255,7 @@ def log(results):
     write_json(data)  
 
 if __name__ == "__main__":
-    if opt.log_path:
-        set_up_log(opt.log_path)
-    else:
-        set_up_log()
+    set_up_globals()
 
     start_epoch = 0
     if opt.load_model:
@@ -387,9 +279,11 @@ if __name__ == "__main__":
                 'encoder_decoder_optimizer': optimizer.state_dict(),
                 'discriminator_optimizer': optimizerD.state_dict(),
                 }, save_path.replace('%',str(epoch+1)))
+    # Generate a cluster of images from reconstructions and samples
     elif opt.load_model and not opt.fid:
         generate_reconstructions(epoch, results_path="quick_results", singles=False, fid=False)
         generate_samples(epoch, n_samples=80,results_path="quick_results", singles=False)
+    # Generate images for FID analysis
     elif opt.load_model and opt.fid:
         generate_reconstructions(epoch, results_path="fid_results")
         generate_samples(epoch, n_samples=1000,results_path="fid_results")

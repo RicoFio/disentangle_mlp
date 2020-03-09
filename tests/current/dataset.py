@@ -45,15 +45,3 @@ def get_data_loader(opt):
         test_loader = DataLoader(dataset=train_dataset, batch_size=5000, shuffle=False, num_workers=opt.num_workers)
 
     return train_loader, test_loader
-
-class RandomDataset(Dataset):
-
-    def __init__(self, size, length):
-        self.len = length
-        self.data = torch.randn(length, size)
-
-    def __getitem__(self, index):
-        return self.data[index]
-
-    def __len__(self):
-        return self.len
