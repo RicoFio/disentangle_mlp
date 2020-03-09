@@ -318,31 +318,34 @@ def train(epoch):
         train_loss += loss.item()
         optimizer.step()
 
-    fid = get_fid(path_data, opt.fid_path_pretrained)
-    print(f'====> Epoch: {epoch} Average loss: {train_loss / len(train_loader.dataset):.4f} FID: {}')
+    generate_samples(epoch, 5000)
+    fid = get_fid(opt.save_path + '/fid_results/', opt.fid_path_pretrained)
+    avg_loss = train_loss / len(train_loader.dataset)
+    log({"Epoch":epoch, "Avg Loss":avg_loss, "FID":fid})
+    print(f'====> Epoch: {epoch} Average loss: {avg_loss:.4f} FID: {fid}')
 
 def generate_reconstructions(epoch, results_path="results", singles=True, store_origs=False, fid=True):
     with torch.no_grad():
         orig_imgs = next(iter(test_loader)) if fid else next(iter(train_loader))
         batch = model.module.decode(model.module.encode(orig_imgs).cpu()).cpu()
         if singles:
-            for x in batch:
-                save_image(x.cpu(), opt.save_path + f'/{results_path}/recon_' + str(epoch) + '.png')
+            for i,x in enumerate(batch):
+                save_image(x.cpu(), opt.save_path + f'/{"fid_results" if fid else results_path}/recon_{i}_{str(epoch)}.png')
         else:
-            save_image(batch.cpu(), opt.save_path + f'/{results_path}/recon_' + str(epoch) + '.png')
+            save_image(batch.cpu(), opt.save_path + f'/{results_path}/recon_{i}_{str(epoch)}.png')
 
         if store_origs:
-            save_image(orig_imgs.cpu(), opt.save_path + '/originals/origin_' + str(epoch) + '.png')
+            save_image(orig_imgs.cpu(), opt.save_path + f'/originals/origin_{str(epoch)}.png')
 
-def generate_samples(epoch, n_samples, results_path="results", singles=True):
+def generate_samples(epoch, n_samples, results_path="results", singles=True, fid=True):
     with torch.no_grad():
         sample = torch.randn(n_samples, opt.n_hidden).to(device)
         sample = model.module.decode(sample).cpu()
         if singles:
-            for x in sample:
-                save_image(x.cpu(), opt.save_path + f'/{results_path}/sample_' + str(epoch) + '.png')
+            for i, x in enumerate(sample):
+                save_image(x.cpu(), opt.save_path + f'/{"fid_results" if fid else results_path}/recon_{i}_{str(epoch)}.png')
         else:
-            save_image(sample.cpu(), opt.save_path + f'/{results_path}/sample_' + str(epoch) + '.png')
+            save_image(sample.cpu(), opt.save_path + f'/{results_path}/sample_{str(epoch)}.png')
 
 # function to add to JSON 
 def write_json(data): 
@@ -364,17 +367,19 @@ if __name__ == "__main__":
     else:
         set_up_log()
 
+    start_epoch = 0
     if opt.load_model:
         checkpoint = torch.load(opt.load_model)
         model.load_state_dict(checkpoint['VAEGAN_model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        epoch = checkpoint['epoch']
+        start_epoch = checkpoint['epoch']
 
     if opt.to_train:
-        for epoch in tqdm(range(30)):
+        for epoch in tqdm(range(start_epoch, opt.epochs)):
             train(epoch)
             with torch.no_grad():
-                
+                generate_reconstructions(epoch, singles=False, fid=False)
+                generate_samples(epoch, 80, singles=False, fid=False)
                 torch.save({
                 'epoch': epoch + 1,
                 "VAEGAN_model": model.module.state_dict(),
