@@ -41,9 +41,6 @@ def arg_parse():
     parser.add_argument('--input_channels', type=int, default=3)
     parser.add_argument('--n_hidden', type=int, default=128)
     parser.add_argument('--img_size', type=int, default=64)
-    parser.add_argument('--w_kld', type=float, default=1)
-    parser.add_argument('--w_loss_g', type=float, default=0.01)
-    parser.add_argument('--w_loss_gd', type=float, default=1)
     parser.add_argument('--load_model', type=str, default="")
     parser.add_argument('--save_path', type=str, default="./data/vaegan")
     parser.add_argument('--log_path', type=str, default="./data/vaegan/log")
@@ -321,6 +318,7 @@ def train(epoch):
 
     generate_samples(epoch, 100)
     fid = get_fid(opt.save_path + '/fid_results/', opt.fid_path_pretrained)
+
     avg_loss = train_loss / len(train_loader.dataset)
     log({"Epoch":epoch, "Avg Loss":avg_loss, "FID":fid})
     print(f'====> Epoch: {epoch} Average loss: {avg_loss:.4f} FID: {fid}')
