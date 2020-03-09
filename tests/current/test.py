@@ -371,8 +371,10 @@ if __name__ == "__main__":
     start_epoch = 0
     if opt.load_model:
         checkpoint = torch.load(opt.load_model)
-        model.load_state_dict(checkpoint['VAEGAN_model'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        model.load_state_dict(checkpoint['encoder_decoder_model'])
+        optimizer.load_state_dict(checkpoint['encoder_decoder_optimizer'])
+        netD.load_state_dict(checkpoint['discriminator_model'])
+        optimizerD.load_state_dict(checkpoint['discriminator_optimizer'])
         start_epoch = checkpoint['epoch']
 
     if opt.to_train:
@@ -383,8 +385,11 @@ if __name__ == "__main__":
                 generate_samples(epoch, 80, singles=False, fid=False)
                 torch.save({
                 'epoch': epoch + 1,
-                "VAEGAN_model": model.module.state_dict(),
-                'optimizer': optimizer.state_dict()}, save_path.replace('%',str(epoch+1)))
+                "encoder_decoder_model": model.module.state_dict(),
+                "discriminator_model": netD.module.state_dict(),
+                'encoder_decoder_optimizer': optimizer.state_dict(),
+                'discriminator_optimizer': optimizerD.state_dict(),
+                }, save_path.replace('%',str(epoch+1)))
     elif opt.load_model and not opt.fid:
         generate_reconstructions(epoch, results_path="quick_results", singles=False, fid=False)
         generate_samples(epoch, n_samples=80,results_path="quick_results", singles=False)
