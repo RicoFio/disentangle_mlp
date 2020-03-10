@@ -27,45 +27,22 @@ import json
 from fid import get_fid
 
 ############################
+
 # Globals
-opt = None
-model = None
-netD = None
-optimizer = None
-optimizerD = None
-criterion = None
-train_loader = None
-test_loader = None
-log_path = ''
-save_path = ''
-device = None
-#############################
 
-def set_up_globals():
-    global opt, model, netD, optimizer, optimizerD, criterion, train_loader, test_loader, log_path, save_path, device
-
-    opt = arg_parse()
-    set_up_log()
-    save_path = opt.save_path + "/models/model_%.tar"
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    torch.manual_seed(opt.seed)
-
-    # Load data 
-    train_loader, test_loader = get_data_loader(opt)
-
-    model = VAE(opt=opt)
-    model = torch.nn.DataParallel(model)
-    model = model.to(device)
-    model.apply(weights_init)
-       
-    netD = Discriminator_celeba(opt).to(device)
-    netD.apply(weights_init)
-
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    optimizerD = optim.Adam(netD.parameters(), lr=1e-3)
-
-    # Initialize BCELoss function
-    criterion = nn.BCELoss()
+# function to add to JSON 
+def write_json(data): 
+    with open(log_path,'w') as f: 
+        json.dump(data, f, indent=4) 
+      
+def log(results):
+    with open(log_path) as json_file: 
+        data = json.load(json_file) 
+        
+        temp = data['output'] 
+        temp.append(results) 
+        
+    write_json(data)  
 
 def arg_parse():
     parser = argparse.ArgumentParser(description='VAE MNIST Example')
@@ -101,6 +78,11 @@ def arg_parse():
 
     return parser.parse_args()
 
+
+
+opt = arg_parse()
+
+
 def set_up_log(path=opt.log_path):
     global log_path
     log_file = f"/log_{str(datetime.now())}.json"
@@ -126,6 +108,58 @@ def set_up_dirs():
     Path(opt.save_path + '/quick_results').mkdir(parents=True, exist_ok=True)
     Path(opt.save_path + '/fid_results').mkdir(parents=True, exist_ok=True)
     Path(opt.log_path).mkdir(parents=True, exist_ok=True)
+
+log_path = ""
+set_up_log()
+save_path = opt.save_path + "/models/model_%.tar"
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+torch.manual_seed(opt.seed)
+
+# Load data 
+train_loader, test_loader = get_data_loader(opt)
+
+model = VAE(opt=opt)
+model = torch.nn.DataParallel(model)
+model = model.to(device)
+model.apply(weights_init)
+       
+netD = Discriminator_celeba(opt).to(device)
+netD.apply(weights_init)
+
+optimizer = optim.Adam(model.parameters(), lr=1e-3)
+optimizerD = optim.Adam(netD.parameters(), lr=1e-3)
+
+# Initialize BCELoss function
+criterion = nn.BCELoss()
+#############################
+
+#def set_up_globals():
+#    global opt, model, netD, optimizer, optimizerD, criterion, train_loader, test_loader, log_path, save_path, device
+
+#     opt = arg_parse()
+#     set_up_log()
+#     save_path = opt.save_path + "/models/model_%.tar"
+#     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+#     torch.manual_seed(opt.seed)
+# 
+#     # Load data 
+#     train_loader, test_loader = get_data_loader(opt)
+# 
+#     model = VAE(opt=opt)
+#     model = torch.nn.DataParallel(model)
+#     model = model.to(device)
+#     model.apply(weights_init)
+#        
+#     netD = Discriminator_celeba(opt).to(device)
+#     netD.apply(weights_init)
+# 
+#     optimizer = optim.Adam(model.parameters(), lr=1e-3)
+#     optimizerD = optim.Adam(netD.parameters(), lr=1e-3)
+# 
+#     # Initialize BCELoss function
+#     criterion = nn.BCELoss()
+
+
 
 # Reconstruction + KL divergence losses summed over all elements and batch
 def reconstruction_loss(recon_x, x, mu, logvar,  **kwargs):
@@ -186,8 +220,19 @@ def train(epoch):
         model.zero_grad()
         label.fill_(real_label)  # fake labels are real for generator cost
 
-        model.module.encoder_set_grad(False)
-        model.module.decoder_set_grad(True)
+        # encoder to reuires grad = False
+        model.module.features.requires_grad = False
+        model.module.x_to_mu.requires_grad = False
+        model.module.x_to_logvar.requires_grad = False
+        model.module.preprocess.requires_grad = True
+        model.module.deconv1.requires_grad = True
+        model.module.act1.requires_grad = True
+        model.module.deconv2.requires_grad = True
+        model.module.act2.requires_grad = True
+        model.module.deconv3.requires_grad = True
+        model.module.act3.requires_grad = True
+        model.module.deconv4.requires_grad = True
+        model.module.activation.requires_grad = True       
         recon_batch, mu, logvar = model(data)
 
         # Since we just updated D, perform another forward pass of all-fake batch through D
@@ -208,9 +253,20 @@ def train(epoch):
 
         ### Encoder ###
         model.zero_grad()
-        model.module.encoder_set_grad(True)
-        model.module.decoder_set_grad(False)
-        # This forward pass recomputation may not be necessary
+
+        model.module.features.requires_grad = True
+        model.module.x_to_mu.requires_grad = True
+        model.module.x_to_logvar.requires_grad = True
+        model.module.preprocess.requires_grad = False
+        model.module.deconv1.requires_grad = False
+        model.module.act1.requires_grad = False
+        model.module.deconv2.requires_grad = False
+        model.module.act2.requires_grad = False
+        model.module.deconv3.requires_grad = False
+        model.module.act3.requires_grad = False
+        model.module.deconv4.requires_grad = False
+        model.module.activation.requires_grad = False
+
         recon_batch, mu, logvar = model(data)
 
         loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device), is_gen=False)
@@ -250,27 +306,14 @@ def generate_samples(epoch, n_samples, results_path="results", singles=True, fid
         else:
             save_image(sample.cpu(), opt.save_path + f'/{results_path}/sample_{str(epoch)}.png')
 
-# function to add to JSON 
-def write_json(data): 
-    with open(log_path,'w') as f: 
-        json.dump(data, f, indent=4) 
-      
-def log(results):
-    with open(log_path) as json_file: 
-        data = json.load(json_file) 
-        
-        temp = data['output'] 
-        temp.append(results) 
-        
-    write_json(data)  
 
 if __name__ == "__main__":
-    set_up_globals()
+#    set_up_globals()
 
     start_epoch = 0
     if opt.load_model:
-        checkpoint = torch.load(opt.load_model)
-        model.load_state_dict(checkpoint['encoder_decoder_model'])
+        checkpoint = torch.load(opt.load_model, map_location="cuda:0")
+        model.module.load_state_dict(checkpoint['encoder_decoder_model'])
         optimizer.load_state_dict(checkpoint['encoder_decoder_optimizer'])
         netD.load_state_dict(checkpoint['discriminator_model'])
         optimizerD.load_state_dict(checkpoint['discriminator_optimizer'])
@@ -292,6 +335,7 @@ if __name__ == "__main__":
             'encoder_decoder_optimizer': optimizer.state_dict(),
             'discriminator_optimizer': optimizerD.state_dict(),
             }, save_path.replace('%',str(epoch+1)))
+                           
     # Generate a cluster of images from reconstructions and samples
     elif opt.load_model and not opt.fid:
         generate_reconstructions(epoch, results_path="quick_results", singles=False, fid=False)

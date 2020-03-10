@@ -424,54 +424,101 @@ class VAE(nn.Module):
         self.input_channels = opt.input_channels
         self.n_hidden = opt.n_hidden
 
-        self.encoder = nn.ModuleDict({
-            'features' : nn.Sequential(
-                                nn.Conv2d(self.input_channels, representation_size, 5, stride=2, padding=2),
-                                nn.BatchNorm2d(representation_size),
-                                nn.ReLU(),
-                                nn.Conv2d(representation_size, representation_size*2, 5, stride=2, padding=2),
-                                nn.BatchNorm2d(representation_size * 2),
-                                nn.ReLU(),
-                                nn.Conv2d(representation_size*2, representation_size*4, 5, stride=2, padding=2),
-                                nn.BatchNorm2d(representation_size * 4),
-                                nn.ReLU()),
-            'x_to_mu' :  nn.Sequential(
-                                nn.Linear(representation_size*4*8*8, 2048),
-                                nn.BatchNorm1d(2048),
-                                nn.ReLU(),
-                                nn.Linear(2048, self.n_hidden)),
-            'x_to_logvar' : nn.Sequential(
-                                nn.Linear(representation_size*4*8*8, 2048),
-                                nn.BatchNorm1d(2048),
-                                nn.ReLU(),
-                                nn.Linear(2048, self.n_hidden))
-        })
-
+        # self.encoder = nn.ModuleDict({
+        #     'features' : nn.Sequential(
+        #                         nn.Conv2d(self.input_channels, representation_size, 5, stride=2, padding=2),
+        #                         nn.BatchNorm2d(representation_size),
+        #                         nn.ReLU(),
+        #                         nn.Conv2d(representation_size, representation_size*2, 5, stride=2, padding=2),
+        #                         nn.BatchNorm2d(representation_size * 2),
+        #                         nn.ReLU(),
+        #                         nn.Conv2d(representation_size*2, representation_size*4, 5, stride=2, padding=2),
+        #                         nn.BatchNorm2d(representation_size * 4),
+        #                         nn.ReLU()),
+        #     'x_to_mu' :  nn.Sequential(
+        #                         nn.Linear(representation_size*4*8*8, 2048),
+        #                         nn.BatchNorm1d(2048),
+        #                         nn.ReLU(),
+        #                         nn.Linear(2048, self.n_hidden)),
+        #     'x_to_logvar' : nn.Sequential(
+        #                         nn.Linear(representation_size*4*8*8, 2048),
+        #                         nn.BatchNorm1d(2048),
+        #                         nn.ReLU(),
+        #                         nn.Linear(2048, self.n_hidden))
+        # })
+        self.features = nn.Sequential(
+            nn.Conv2d(self.input_channels, representation_size, 5, stride=2, padding=2),
+            nn.BatchNorm2d(representation_size),
+            nn.ReLU(),
+            nn.Conv2d(representation_size, representation_size * 2, 5, stride=2, padding=2),
+            nn.BatchNorm2d(representation_size * 2),
+            nn.ReLU(),
+            nn.Conv2d(representation_size * 2, representation_size * 4, 5, stride=2, padding=2),
+            nn.BatchNorm2d(representation_size * 4),
+            nn.ReLU()
+        )
+        self.x_to_mu = nn.Sequential(
+            nn.Linear(representation_size*4*8*8, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, self.n_hidden)
+        )
+        self.x_to_logvar = nn.Sequential(
+            nn.Linear(representation_size*4*8*8, 2048),
+            nn.BatchNorm1d(2048),
+            nn.ReLU(),
+            nn.Linear(2048, self.n_hidden)
+        )
 
         # DECODER 
         self.input_size = opt.n_hidden
         self.representation_size2 = opt.n_z
 
         dim = self.representation_size2[0] * self.representation_size2[1] * self.representation_size2[2]
-        
-        self.decoder = nn.ModuleDict({
-            "preprocess" : nn.Sequential(nn.Linear(self.input_size, dim), nn.BatchNorm1d(dim), nn.ReLU()),
-            "deconv1" : nn.ConvTranspose2d(self.representation_size2[0], 256, 5, stride=2, padding=2),
-            "act1" : nn.Sequential(nn.BatchNorm2d(256), nn.ReLU()),
-            "deconv2" : nn.ConvTranspose2d(256, 128, 5, stride=2, padding=2),
-            "act2" : nn.Sequential(nn.BatchNorm2d(128), nn.ReLU()),
-            "deconv3" : nn.ConvTranspose2d(128, 32, 5, stride=2, padding=2),
-            "act3" : nn.Sequential(nn.BatchNorm2d(32), nn.ReLU()),
-            "deconv4" : nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2),
-            "activation" : nn.Tanh()
-        })
+
+        # self.decoder = nn.ModuleDict({
+        #     "preprocess": nn.Sequential(nn.Linear(self.input_size, dim), nn.BatchNorm1d(dim), nn.ReLU()),
+        #     "deconv1": nn.ConvTranspose2d(self.representation_size2[0], 256, 5, stride=2, padding=2),
+        #     "act1": nn.Sequential(nn.BatchNorm2d(256), nn.ReLU()),
+        #     "deconv2": nn.ConvTranspose2d(256, 128, 5, stride=2, padding=2),
+        #     "act2": nn.Sequential(nn.BatchNorm2d(128), nn.ReLU()),
+        #     "deconv3": nn.ConvTranspose2d(128, 32, 5, stride=2, padding=2),
+        #     "act3": nn.Sequential(nn.BatchNorm2d(32), nn.ReLU()),
+        #     "deconv4": nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2),
+        #     "activation": nn.Tanh()
+        # })
+        self.preprocess = nn.Sequential(
+            nn.Linear(self.input_size, dim),
+            nn.BatchNorm1d(dim),
+            nn.ReLU())
+        # 256 x 8 x 8
+        self.deconv1 = nn.ConvTranspose2d(self.representation_size2[0], 256, 5, stride=2, padding=2)
+        self.act1 = nn.Sequential(nn.BatchNorm2d(256),
+                                  nn.ReLU())
+        # 256 x 16 x 16
+        self.deconv2 = nn.ConvTranspose2d(256, 128, 5, stride=2, padding=2)
+        self.act2 = nn.Sequential(nn.BatchNorm2d(128),
+                                  nn.ReLU())
+        # 128 x 32 x 32
+        self.deconv3 = nn.ConvTranspose2d(128, 32, 5, stride=2, padding=2)
+        self.act3 = nn.Sequential(nn.BatchNorm2d(32),
+                                  nn.ReLU())
+        # 32 x 64 x 64
+        self.deconv4 = nn.ConvTranspose2d(32, 3, 5, stride=1, padding=2)
+        # 3 x 64 x 64
+        self.activation = nn.Tanh()
 
     def encode(self, x):
+        # batch_size = x.size()[0]
+        # inner = self.encoder['features'](x).squeeze()
+        # inner = inner.view(batch_size, -1)
+        # mu = self.encoder['x_to_mu'](inner)
+        # logvar = self.encoder['x_to_logvar'](inner)
         batch_size = x.size()[0]
-        inner = self.encoder['features'](x).squeeze()
+        inner = self.features(x).squeeze()
         inner = inner.view(batch_size, -1)
-        mu = self.encoder['x_to_mu'](inner)
-        logvar = self.encoder['x_to_logvar'](inner)
+        mu = self.x_to_mu(inner)
+        logvar = self.x_to_logvar(inner)
         return mu, logvar
 
     def encoder_set_grad(self, state):
@@ -483,28 +530,43 @@ class VAE(nn.Module):
             v.requires_grad = state
 
     def reparameterize(self, mu, logvar):
-        std = torch.exp(0.5*logvar)
-        eps = torch.randn_like(std)
-        return mu + eps*std
+        std = T.exp(0.5 * logvar)
+        eps = T.randn_like(std)
+        return mu + eps * std
 
     def decode(self, code):
+        # bs = code.size()[0]
+        # preprocessed_codes = self.decoder['preprocess'](code)
+        # preprocessed_codes = preprocessed_codes.view(-1,
+        #                                              self.representation_size2[0],
+        #                                              self.representation_size2[1],
+        #                                              self.representation_size2[2])
+        # output = self.decoder['deconv1'](preprocessed_codes, output_size=(bs, 256, 16, 16))
+        # output = self.decoder['act1'](output)
+        # output = self.decoder['deconv2'](output, output_size=(bs, 128, 32, 32))
+        # output = self.decoder['act2'](output)
+        # output = self.decoder['deconv3'](output, output_size=(bs, 32, 64, 64))
+        # output = self.decoder['act3'](output)
+        # output = self.decoder['deconv4'](output, output_size=(bs, 3, 64, 64))
+        # output = self.decoder['activation'](output)
         bs = code.size()[0]
-        preprocessed_codes = self.decoder['preprocess'](code)
+        preprocessed_codes = self.preprocess(code)
         preprocessed_codes = preprocessed_codes.view(-1,
                                                      self.representation_size2[0],
                                                      self.representation_size2[1],
                                                      self.representation_size2[2])
-        output = self.decoder['deconv1'](preprocessed_codes, output_size=(bs, 256, 16, 16))
-        output = self.decoder['act1'](output)
-        output = self.decoder['deconv2'](output, output_size=(bs, 128, 32, 32))
-        output = self.decoder['act2'](output)
-        output = self.decoder['deconv3'](output, output_size=(bs, 32, 64, 64))
-        output = self.decoder['act3'](output)
-        output = self.decoder['deconv4'](output, output_size=(bs, 3, 64, 64))
-        output = self.decoder['activation'](output)
+        output = self.deconv1(preprocessed_codes, output_size=(bs, 256, 16, 16))
+        output = self.act1(output)
+        output = self.deconv2(output, output_size=(bs, 128, 32, 32))
+        output = self.act2(output)
+        output = self.deconv3(output, output_size=(bs, 32, 64, 64))
+        output = self.act3(output)
+        output = self.deconv4(output, output_size=(bs, 3, 64, 64))
+        output = self.activation(output)
         return output
 
     def forward(self, x):
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
         return self.decode(z), mu, logvar
+
