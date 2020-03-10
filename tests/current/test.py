@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 import argparse
 import torch
@@ -23,7 +23,7 @@ from fid import get_fid
 
 def arg_parse():
     parser = argparse.ArgumentParser(description='VAE MNIST Example')
-    parser.add_argument('--batch_size', type=int, default=128, metavar='N',
+    parser.add_argument('--batch_size', type=int, default=256, metavar='N',
                         help='input batch size for training (default: 128)')
     parser.add_argument('--epochs', type=int, default=30, metavar='N',
                         help='number of epochs to train (default: 10)')
@@ -325,7 +325,7 @@ def train(epoch):
     log({"Epoch":epoch, "Avg Loss":avg_loss, "FID":fid})
     print(f'====> Epoch: {epoch} Average loss: {avg_loss:.4f} FID: {fid}')
 
-def generate_reconstructions(epoch, results_path="results", singles=True, store_origs=False, fid=True):
+def generate_reconstructions(epoch, results_path="results", singles=True, store_origs=True, fid=True):
     with torch.no_grad():
         orig_imgs, _ = next(iter(test_loader)) if fid else next(iter(train_loader))
         batch = model(orig_imgs)[0].cpu()
@@ -383,6 +383,9 @@ if __name__ == "__main__":
             with torch.no_grad():
                 generate_reconstructions(epoch, singles=False, fid=False)
                 generate_samples(epoch, 80, singles=False, fid=False)
+                model_path = opt.save_path + "/models/model_%.tar"
+                if os.path.isfile(model_path.replace('%', str(epoch-5))):
+                    os.remove(model.replace('%',str(epoch-5)))
                 torch.save({
                 'epoch': epoch + 1,
                 "encoder_decoder_model": model.module.state_dict(),
