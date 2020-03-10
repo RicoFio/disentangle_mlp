@@ -237,7 +237,7 @@ def generate_samples(epoch, n_samples, results_path="results", singles=True, fid
         sample = model.module.decode(sample).cpu()
         if singles:
             for i, x in enumerate(sample):
-                save_image(x.cpu(), opt.save_path + f'/{"fid_results" if fid else results_path}/recon_{i}_{str(epoch)}.png')
+                save_image(x.cpu(), opt.save_path + f'/{"fid_results" if fid else results_path}/sample_{i}_{str(epoch)}.png')
         else:
             save_image(sample.cpu(), opt.save_path + f'/{results_path}/sample_{str(epoch)}.png')
 
@@ -270,6 +270,7 @@ if __name__ == "__main__":
     if opt.to_train:
         for epoch in tqdm(range(start_epoch, opt.epochs)):
             train(epoch)
+            # THIS IS NOT NEEDED 
             with torch.no_grad():
                 generate_reconstructions(epoch, singles=False, fid=False)
                 generate_samples(epoch, 80, singles=False, fid=False)
