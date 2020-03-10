@@ -128,16 +128,21 @@ def set_up_dirs():
     Path(opt.log_path).mkdir(parents=True, exist_ok=True)
 
 # Reconstruction + KL divergence losses summed over all elements and batch
-def reconstruction_loss(recon_x, x, mu, logvar):
+def reconstruction_loss(recon_x, x, mu, logvar,  **kwargs):
+
     MSE = F.mse_loss(recon_x, x, reduction='sum')
 
-    # see Appendix B from VAE paper:
-    # Kingma and Welling. Auto-Encoding Variational Bayes. ICLR, 2014
-    # https://arxiv.org/abs/1312.6114
-    # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return MSE + KLD
+    if is_gen:
+        sim_real = kwargs['sim_real']
+        sim_recon = kwargs['sim_recon']
+        # then add similarity
+        SIM = F.mse_loss(sim_recon, sim_real, reduction='sum')
+
+        return MSE + SIM
+    else:
+        return MSE + KLD
 
 def train(epoch):
     model.train()
@@ -154,7 +159,7 @@ def train(epoch):
 
         label = torch.full((data.size()[0],), real_label, device=device)
         # Forward pass real batch through D
-        output, _ = netD(data)
+        output, sim_real = netD(data)
         # Calculate loss on all-real batch
         errD_real = criterion(output, label)
         # Calculate gradients for D in backward pass
@@ -181,19 +186,23 @@ def train(epoch):
         model.zero_grad()
         label.fill_(real_label)  # fake labels are real for generator cost
 
-        # encoder to reuires grad = False
         model.module.encoder_set_grad(False)
         model.module.decoder_set_grad(True)
         recon_batch, mu, logvar = model(data)
 
         # Since we just updated D, perform another forward pass of all-fake batch through D
-        output, _ = netD(fake)
+        output_fake, _ = netD(fake)
 
+        # should add this too
+        output_recon, sim_recon = netD(recon_batch)
+       
         # Calculate G's loss based on this output
-        errG = criterion(output, label)
+        errG_fake = criterion(output_fake, label)
+        errG_recon = criterion(output_recon, label)
         # Calculate gradients for G
-        errG.backward()
-        loss = reconstruction_loss(recon_batch.to(device), data, mu.to(device), logvar.to(device))
+        errG_fake.backward()
+        errG_recon.backward()
+        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device), is_gen=True, sim_real=sim_real, sim_recon=sim_recon)
         loss.backward()
         optimizer.step()
 
@@ -201,10 +210,10 @@ def train(epoch):
         model.zero_grad()
         model.module.encoder_set_grad(True)
         model.module.decoder_set_grad(False)
-
+        # This forward pass recomputation may not be necessary
         recon_batch, mu, logvar = model(data)
 
-        loss = reconstruction_loss(recon_batch.to(device), data, mu.to(device), logvar.to(device))
+        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device), is_gen=False)
         loss.backward()
         train_loss += loss.item()
         optimizer.step()
@@ -270,20 +279,19 @@ if __name__ == "__main__":
     if opt.to_train:
         for epoch in tqdm(range(start_epoch, opt.epochs)):
             train(epoch)
-            # THIS IS NOT NEEDED 
-            with torch.no_grad():
-                generate_reconstructions(epoch, singles=False, fid=False)
-                generate_samples(epoch, 80, singles=False, fid=False)
-                model_path = opt.save_path + "/models/model_%.tar"
-                if os.path.isfile(model_path.replace('%', str(epoch-5))):
-                    os.remove(model.replace('%',str(epoch-5)))
-                torch.save({
-                'epoch': epoch + 1,
-                "encoder_decoder_model": model.module.state_dict(),
-                "discriminator_model": netD.state_dict(),
-                'encoder_decoder_optimizer': optimizer.state_dict(),
-                'discriminator_optimizer': optimizerD.state_dict(),
-                }, save_path.replace('%',str(epoch+1)))
+            
+            generate_reconstructions(epoch, singles=False, fid=False)
+            generate_samples(epoch, 80, singles=False, fid=False)
+            model_path = opt.save_path + "/models/model_%.tar"
+            if os.path.isfile(model_path.replace('%', str(epoch-5))):
+                os.remove(model.replace('%',str(epoch-5)))
+            torch.save({
+            'epoch': epoch + 1,
+            "encoder_decoder_model": model.module.state_dict(),
+            "discriminator_model": netD.state_dict(),
+            'encoder_decoder_optimizer': optimizer.state_dict(),
+            'discriminator_optimizer': optimizerD.state_dict(),
+            }, save_path.replace('%',str(epoch+1)))
     # Generate a cluster of images from reconstructions and samples
     elif opt.load_model and not opt.fid:
         generate_reconstructions(epoch, results_path="quick_results", singles=False, fid=False)
