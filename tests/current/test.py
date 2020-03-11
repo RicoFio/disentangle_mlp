@@ -63,8 +63,8 @@ def arg_parse():
     parser.add_argument('--n_hidden', type=int, default=128)
     parser.add_argument('--img_size', type=int, default=64)
     parser.add_argument('--load_model', type=str, default="")
-    parser.add_argument('--save_path', type=str, default="./data/vaegan")
-    parser.add_argument('--log_path', type=str, default="./data/vaegan/log")
+    parser.add_argument('--save_path', type=str, default="./data/betavaegan")
+    parser.add_argument('--log_path', type=str, default="./data/betavaegan/log")
     parser.add_argument('--fid_path_pretrained', type=str, default="/home/shared/save_riccardo/fid/celeba/fid_stats_celeba.npz")
 
     def str2bool(v):
@@ -176,7 +176,7 @@ def reconstruction_loss(recon_x, x, mu, logvar,  **kwargs):
 
         return MSE + SIM
     else:
-        return MSE + KLD
+        return MSE + 50. * KLD
 
 def train(epoch):
     model.train()
