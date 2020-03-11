@@ -33,7 +33,7 @@ def get_data_loader(opt):
         test_loader = DataLoader(datasets.MNIST(opt.image_root, train=False, download=False, transform=my_transform),
                                     batch_size=opt.batch_size, shuffle=True)
 
-    elif opt.dataset == "celebA":
+    elif opt.dataset == "celebA" or opt.dataset == "celebA_reduced":
         my_transform = transforms.Compose([
             transforms.Resize((opt.img_size, opt.img_size)),
             transforms.CenterCrop(opt.img_size),
