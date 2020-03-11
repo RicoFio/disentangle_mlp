@@ -180,7 +180,9 @@ def reconstruction_loss(recon_x, x, mu, logvar,  **kwargs):
 
 def train(epoch):
     model.train()
-    train_loss = 0
+    recon_enc_loss = 0
+    recon_enc_loss = 0
+
     for batch_idx, (data, _) in tqdm(enumerate(train_loader)):
         # create labels 
         fake_label = np.random.choice(a=[0.1,0.9], p=[0.95, 0.05])
@@ -198,6 +200,8 @@ def train(epoch):
         errD_real = criterion(output, label)
         # Calculate gradients for D in backward pass
         errD_real.backward()
+
+        D_x = output.mean().item()
 
         ## Train with all-fake batch
         # Generate batch of latent vectors
@@ -247,8 +251,8 @@ def train(epoch):
         # Calculate gradients for G
         errG_fake.backward()
         errG_recon.backward()
-        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device), is_gen=True, sim_real=sim_real, sim_recon=sim_recon)
-        loss.backward()
+        recon_dec_loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device), is_gen=True, sim_real=sim_real, sim_recon=sim_recon)
+        recon_dec_loss.backward()
         optimizer.step()
 
         ### Encoder ###
@@ -269,9 +273,12 @@ def train(epoch):
 
         recon_batch, mu, logvar = model(data)
 
-        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device), is_gen=False)
-        loss.backward()
-        train_loss += loss.item()
+        recon_enc_loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device), is_gen=False)
+        recon_enc_loss.backward()
+
+        train_recon_enc_loss += recon_enc_loss.item()
+        train_recon_dec_loss += recon_dec_loss.item()
+
         optimizer.step()
 
     # Calculate FID score
@@ -279,9 +286,11 @@ def train(epoch):
     fid = get_fid(opt.save_path + '/fid_results/', opt.fid_path_pretrained)
 
     # Log epoch statistics
-    avg_loss = train_loss / len(train_loader.dataset)
-    log({"Epoch":epoch, "Avg Loss":avg_loss, "FID":fid})
-    print(f'====> Epoch: {epoch} Average loss: {avg_loss:.4f} FID: {fid}')
+    avg_recon_enc_loss = train_recon_enc_loss / len(train_loader.dataset)
+    avg_recon_dec_loss = train_recon_dec_loss / len(train_loader.dataset)
+
+    log({"Epoch":epoch, "Average Dec Recon loss":avg_recon_dec_loss, "Average Enc Recon loss":avg_recon_enc_loss, "D(x)":D_x, "FID":fid})
+    print(f'====> Epoch: {epoch} Average Dec_Recon loss: {avg_recon_dec_loss:.4f} Average Dec_Enc loss: {avg_recon_enc_loss:.4f} D(x): {D_x:.4f} FID: {fid}')
 
 def generate_reconstructions(epoch, results_path="results", singles=True, store_origs=True, fid=True):
     with torch.no_grad():
