@@ -21,6 +21,7 @@ def get_data_loader(opt):
         train_dataset = datasets.ImageFolder(root=opt.image_root, transform=my_transform)
         train_loader = DataLoader(dataset=train_dataset, batch_size=opt.batch_size, shuffle=True, num_workers=opt.num_workers)
         test_loader = None
+        val_loader = None
 
     elif opt.dataset == "mnist":
         my_transform = transforms.Compose([
@@ -30,8 +31,8 @@ def get_data_loader(opt):
         ])
         train_loader = DataLoader(datasets.MNIST(opt.image_root, train=True, download=True, transform=my_transform),
                                     batch_size=opt.batch_size, shuffle=True)
-        test_loader = DataLoader(datasets.MNIST(opt.image_root, train=False, download=False, transform=my_transform),
-                                    batch_size=opt.batch_size, shuffle=True)
+        test_loader = None
+        val_loader = None
 
     elif opt.dataset == "celebA" or opt.dataset == "celebA_reduced":
         my_transform = transforms.Compose([
@@ -40,8 +41,12 @@ def get_data_loader(opt):
             transforms.ToTensor(),
             normalize_fiw
         ])
-        train_dataset = datasets.ImageFolder(root=opt.image_root, transform=my_transform)
-        train_loader = DataLoader(dataset=train_dataset, batch_size=opt.batch_size, shuffle=True, num_workers=opt.num_workers)
-        test_loader = DataLoader(dataset=train_dataset, batch_size=5000, shuffle=False, num_workers=opt.num_workers)
+        train_dataset = datasets.ImageFolder(root=opt.image_root_train, transform=my_transform)
+        val_dataset = datasets.ImageFolder(root=opt.image_root_val, transform=my_transform)
+        test_dataset = datasets.ImageFolder(root=opt.image_root_test, transform=my_transform)
 
-    return train_loader, test_loader
+        train_loader = DataLoader(dataset=train_dataset, batch_size=opt.batch_size_train, shuffle=True, num_workers=opt.num_workers)
+        val_loader = DataLoader(dataset=val_dataset, batch_size=opt.batch_size_val, shuffle=False, num_workers=opt.num_workers)
+        test_loader = DataLoader(dataset=test_dataset, batch_size=opt.batch_size_test, shuffle=False, num_workers=opt.num_workers)
+
+    return train_loader, val_loader, test_loader

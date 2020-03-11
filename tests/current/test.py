@@ -126,8 +126,8 @@ model.apply(weights_init)
 netD = Discriminator_celeba(opt).to(device)
 netD.apply(weights_init)
 
-optimizer = optim.Adam(model.parameters(), lr=1e-3)
-optimizerD = optim.Adam(netD.parameters(), lr=1e-3)
+optimizer = optim.Adam(model.parameters(), lr=opt.lr)
+optimizerD = optim.Adam(netD.parameters(), lr=opt.lr)
 
 # Initialize BCELoss function
 criterion = nn.BCELoss()

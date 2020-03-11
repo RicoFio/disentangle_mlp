@@ -8,7 +8,7 @@ def gen_fid_reconstructions(fn, dl, epoch, results_path):
         orig_imgs, _ = next(iter(dl))
         batch = fn(orig_imgs).cpu()
         for i,x in enumerate(batch):
-            save_image(x.cpu(), results_path + f'/recon_{i}_{str(epoch)}.png')
+            save_image(x.cpu(), results_path + f'/recon_{i}_{str(epoch)}.png', normalize=True)
 
 def gen_reconstructions(fn, dl, epoch, results_path, store_origs=False, path_for_originals=""):
     with torch.no_grad():
@@ -16,20 +16,20 @@ def gen_reconstructions(fn, dl, epoch, results_path, store_origs=False, path_for
         batch = fn(orig_imgs).cpu()
         save_image(batch.cpu(), results_path + f'/recon_{str(epoch)}.png')
         if store_origs and path_for_originals:
-            save_image(orig_imgs.cpu(), path_for_originals + f'/original_{str(epoch)}.png')
+            save_image(orig_imgs.cpu(), path_for_originals + f'/original_{str(epoch)}.png', normalize=True)
 
 def generate_fid_samples(fn, epoch, n_samples, n_hidden, results_path, device="cpu"):
     with torch.no_grad():
         sample = torch.randn(n_samples, n_hidden).to(device)
         sample = fn(sample).cpu()
         for i, x in enumerate(sample):
-            save_image(x.cpu(), results_path + f'/sample_{i}_{str(epoch)}.png')
+            save_image(x.cpu(), results_path + f'/sample_{i}_{str(epoch)}.png', normalize=True)
 
 def generate_samples(fn, epoch, n_samples, n_hidden, results_path, device="cpu"):
     with torch.no_grad():
         sample = torch.randn(n_samples, n_hidden).to(device)
         sample = fn(sample).cpu()
-        save_image(sample.cpu(), results_path + f'/sample_{str(epoch)}.png')
+        save_image(sample.cpu(), results_path + f'/sample_{str(epoch)}.png', normalize=True)
 
 # Testing
 if __name__=="__main__":
