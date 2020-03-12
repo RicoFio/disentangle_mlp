@@ -22,7 +22,7 @@ class EnvSetter():
         self.parser.add_argument('--load_path', type=str, default="")
         self.parser.add_argument('--save_path', type=str, default=f"./data/%")
         self.parser.add_argument('--log_path', type=str, default=f"./data/%/log")
-        self.parser.add_argument('--fid_path_pretrained', type=str, default="/home/shared/save_riccardo/fid/celeba/fid_stats_celeba.npz")
+        self.parser.add_argument('--fid_path_pretrained', type=str, default="/home/shared/evaluation/fid/fid_stats_celeba.npz")
 
         self.parser.add_argument('--dataset', type=str, default="celebA")
         self.parser.add_argument('--image_root_train', type=str, default=f"/home/shared/data/%/train")
@@ -37,7 +37,7 @@ class EnvSetter():
                                 help='input batch size for validation (default: 128)')
         self.parser.add_argument('--batch_size_test', type=int, default=256, metavar='N', 
                                 help='input batch size for testing (default: 128)')
-        self.parser.add_argument("--n_samples", type=int, default=5000)
+        self.parser.add_argument("--n_samples", type=int, default=1000)
         self.parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8])
         self.parser.add_argument('--n_hidden', type=int, default=128)
         self.parser.add_argument('--lr', type=float, default=3e-4)

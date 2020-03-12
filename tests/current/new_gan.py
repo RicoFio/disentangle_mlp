@@ -1,5 +1,8 @@
 import argparse
 import os
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
 import random
 import torch
 import torch.nn as nn
@@ -23,12 +26,15 @@ from tqdm import tqdm
 from envsetter import EnvSetter
 
 from helper_functions import *
+from fid import get_fid
+
+from logger import Logger
 
 opt = EnvSetter("gan").get_parser()
-
+logger = Logger(opt.log_path, opt)
 # Set-up variables
 workers = opt.num_workers
-batch_size = opt.batch_size_training
+batch_size = opt.batch_size_train
 image_size = opt.img_size
 nc = opt.input_channels
 nz = opt.n_z
@@ -43,15 +49,15 @@ netD = Discriminator_celeba(opt).to(device)
 
 # Handle multi-gpu if desired
 if (device.type == 'cuda') and opt.use_gpus:
-    netG = nn.DataParallel(netG, opt.use_gpus)
-    netD = nn.DataParallel(netD, opt.use_gpus)
+    netG = nn.DataParallel(netG)
+    netD = nn.DataParallel(netD)
 
 # Init weights to mean=0, stdev=0.2.
 netG.apply(weights_init)
 netD.apply(weights_init)
 
 # Generator
-optimizerG = optim.Adam(model.parameters(), lr=opt.lr)
+optimizerG = optim.Adam(netG.parameters(), lr=opt.lr)
 optimizerD = optim.Adam(netD.parameters(), lr=opt.lr)
 
 # Data loaders
@@ -60,7 +66,7 @@ train_loader, val_loader, test_loader = get_data_loader(opt)
 def train():
     # Initialize BCELoss function
     criterion = nn.BCELoss()
-    fixed_noise = torch.randn(batch_size, nz, device=device)
+    fixed_noise = torch.randn(batch_size, ngf, device=device)
 
     avg_loss_G = 0 
     avg_loss_D = 0
@@ -90,7 +96,7 @@ def train():
 
         ## Train with all-fake batch
         # Generate batch of latent vectors
-        noise = torch.randn(b_size, nz, device=device)
+        noise = torch.randn(b_size, ngf, device=device)
         # Generate fake image batch with G
         fake = netG(noise)
         label.fill_(fake_label)
@@ -124,15 +130,15 @@ def train():
         # Output training stats
         if i % opt.log_interval == 0:
             print('[%d/%d][%d/%d]\tLoss_D: %.4f\tLoss_G: %.4f\tD(x): %.4f\tD(G(z)): %.4f / %.4f'
-                    % (epoch, num_epochs, i, len(train_loader),
+                    % (epoch, opt.epochs, i, len(train_loader),
                         errD.item(), errG.item(), D_x, D_G_z1, D_G_z2))
-        avg_errG += errG
-        avg_errD += errD
+        avg_loss_G += errG.item()
+        avg_loss_D += errD.item()
 
-    avg_errG = avg_errG / len(train_loader.dataset)
-    avg_errD = avg_errG / len(train_loader.dataset)
+    avg_loss_G = avg_loss_G / len(train_loader.dataset)
+    avg_loss_D = avg_loss_G / len(train_loader.dataset)
 
-    return avg_errG, avg_errD
+    return avg_loss_G, avg_loss_D
 
 
 if __name__ == "__main__":
@@ -150,34 +156,35 @@ if __name__ == "__main__":
 
     if opt.to_train:
         for epoch in range(start_epoch, opt.epochs):
-           avg_errG, avg_errD = train()
+            avg_loss_G, avg_loss_D = train()
             with torch.no_grad():
-            # Save Model
-            torch.save({
-                'epoch': epoch + 1,
-                "netG": netG.state_dict(),
-                "netD": netD.state_dict(),
-                'G_trainer': optimizerG.state_dict(),
-                'D_trainer': optimizerD.state_dict()}, save_path.replace('%',str(epoch+1)))
-
-            # Calculate FID
-            fn = lambda x: netG(x).detach().cpu()
-            generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_recons, device=device)
-            fid = get_fid(opt.fid_path_recons, fid_path_pretrained)
-
-            # Output stats
-            print('====> Epoch: {} Average loss: {:.4f} FID: {:.4f}'.format(
-                epoch, avg_loss))
-
-            # Log results
-            logger.log({
-                "Epoch": epoch, 
-                "Avg Loss G": avg_errG, 
-                "Avg Loss E": avg_errD,
-                "FID": fid
-                })
+                # Save Model
+                torch.save({
+                    'epoch': epoch + 1,
+                    "netG": netG.state_dict(),
+                    "netD": netD.state_dict(),
+                    'G_trainer': optimizerG.state_dict(),
+                    'D_trainer': optimizerD.state_dict()}, opt.model_path + f"/model_{str(epoch+1)}.tar")
                 
-    elif:
+
+                # Calculate FID
+                fn = lambda x: netG(x).detach().cpu()
+                generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
+                fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
+                fid=0
+                # Output stats
+                print('====> Epoch: {} Average loss G: {:.4f} Average loss D: {:.4f} FID: {:.4f}'.format(
+                    epoch, avg_loss_G, avg_loss_D, fid))
+
+                # Log results
+                logger.log({
+                    "Epoch": epoch, 
+                    "Avg Loss G": avg_loss_G, 
+                    "Avg Loss E": avg_loss_D,
+                    "FID": fid
+                    })
+                
+    elif opt.fid:
         raise NotImplementedError
 
 

@@ -14,10 +14,11 @@ from model import *
 from tqdm import tqdm
 
 from envsetter import EnvSetter
+from helper_functions import *
 from fid import get_fid
 from logger import Logger
 
-opt = EnvSetter("vae")
+opt = EnvSetter("vae").get_parser()
 logger = Logger(opt.log_path, opt)
 save_path = opt.save_path
 
@@ -84,14 +85,14 @@ if __name__ == "__main__":
                 torch.save({
                     'epoch': epoch + 1,
                     'VAE_model': model.module.state_dict(),
-                    'optimizer': optimizer.state_dict()}, opt.model_path + f"model_{str(epoch+1)}.tar"))
+                    'optimizer': optimizer.state_dict()}, opt.model_path + f"model_{str(epoch+1)}.tar")
 
                 # Calculate FID
                 fn = lambda x: model.module.decode(x).cpu()
-                generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_recons, device=device)
-                fid = get_fid(opt.fid_path_recons, fid_path_pretrained)
+                generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
+                fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
                 print('====> Epoch: {} Average loss: {:.4f} FID: {:.4f}'.format(
-                    epoch, avg_loss))
+                    epoch, avg_loss, fid))
 
                 # Log results
                 logger.log({
