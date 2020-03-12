@@ -134,10 +134,10 @@ def train(epoch):
        
         # Calculate G's loss based on this output
         errG_fake = criterion(output_fake, label)
-        errG_recon = criterion(output_recon, label)
+        # errG_recon = criterion(output_recon, label)
         # Calculate gradients for G
         errG_fake.backward()
-        errG_recon.backward()
+        # errG_recon.backward()
         loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device))
         loss.backward()
         optimizerEG.step()
