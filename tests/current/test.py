@@ -175,8 +175,7 @@ def reconstruction_loss(recon_x, x, mu, logvar,  **kwargs):
         SIM = F.mse_loss(sim_recon, sim_real, reduction='sum')
 
         return MSE + SIM
-    else:
-        return MSE + 50. * KLD
+    return MSE + 50. * KLD
 
 def train(epoch):
     model.train()
