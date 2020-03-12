@@ -68,8 +68,6 @@ def reconstruction_loss(recon_x, x, is_gen, **kwargs):
 
     MSE = F.mse_loss(recon_x, x, reduction='sum')
 
-    KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-
     if is_gen:
         sim_real = kwargs['sim_real']
         sim_recon = kwargs['sim_recon']
@@ -100,7 +98,7 @@ def train(epoch):
 
         label = torch.full((data.size()[0],), real_label, device=device)
         # Forward pass real batch through D
-        output, _ = netD(data)
+        output, sim_real = netD(data)
         # Calculate loss on all-real batch
         errD_real = criterion(output, label)
         # Calculate gradients for D in backward pass
@@ -148,14 +146,14 @@ def train(epoch):
         output_fake, _ = netD(fake)
 
         # should add this too
-        output_recon, _ = netD(recon_batch)
+        output_recon, sim_recon = netD(recon_batch)
        
         # Calculate G's loss based on this output
         errG_fake = criterion(output_fake, label)
-        # errG_recon = criterion(output_recon, label)
+        errG_recon = criterion(output_recon, label)
         # Calculate gradients for G
         errG_fake.backward()
-        # errG_recon.backward()
+        #errG_recon.backward()
         loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, is_gen=True, sim_real=sim_real.to(device), sim_recon=sim_recon.to(device))
         loss.backward()
         optimizerEG.step()
