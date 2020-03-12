@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
 import argparse
 import torch
@@ -119,7 +119,9 @@ if __name__ == "__main__":
                 batch = model.module.decode(model.module.encode(sample).cpu()).cpu()
                 save_image(batch.cpu(),
                                 './data/vae/quick_results/recon_' + str(epoch) + '.png')
-
+                
+	        if os.path.isfile(save_path.replace('%',epoch-4)):
+		    os.remove(save_path.replace('%',epoch-4))
                 torch.save({
                 'epoch': epoch + 1,
                 "VAE_model": model.module.state_dict(),

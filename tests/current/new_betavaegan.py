@@ -20,7 +20,7 @@ from model import *
 from tqdm import tqdm
 
 from fid import get_fid
-from logger import logger
+from logger import Logger
 from envsetter import EnvSetter
 from helper_functions import *
 
@@ -53,7 +53,7 @@ optimizerD = optim.Adam(netD.parameters(), lr=opt.lr)
 criterion = nn.BCELoss()
 #############################
 # Reconstruction + KL divergence losses summed over all elements and batch
-def reconstruction_loss(recon_x, x, mu, logvar,  **kwargs):
+def reconstruction_loss(recon_x, x, mu, logvar, is_gen, **kwargs):
 
     MSE = F.mse_loss(recon_x, x, reduction='sum')
 
@@ -131,7 +131,7 @@ def train(epoch):
         netEG.module.act3.requires_grad = True
         netEG.module.deconv4.requires_grad = True
         netEG.module.activation.requires_grad = True       
-        recon_batch, mu, logvar = model(data)
+        recon_batch, mu, logvar = netEG(data)
 
         # Since we just updated D, perform another forward pass of all-fake batch through D
         output_fake, _ = netD(fake)
@@ -165,7 +165,7 @@ def train(epoch):
         netEG.module.deconv4.requires_grad = False
         netEG.module.activation.requires_grad = False
 
-        recon_batch, mu, logvar = model(data)
+        recon_batch, mu, logvar = netEG(data)
 
         recon_enc_loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device), is_gen=False)
         recon_enc_loss.backward()
@@ -174,6 +174,7 @@ def train(epoch):
         train_recon_dec_loss += recon_dec_loss.item()
 
         optimizerEG.step()
+        break
 
     
     avg_recon_enc_loss = train_recon_enc_loss / len(train_loader.dataset)
