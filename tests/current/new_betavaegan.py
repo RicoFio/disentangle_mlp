@@ -123,6 +123,7 @@ def train(epoch):
 
         netEG.zero_grad()
         label.fill_(real_label)  # fake labels are real for generator cost
+        output, sim_real = netD(data)
 
         # encoder to reuires grad = False
         netEG.module.features.requires_grad = False
@@ -147,15 +148,15 @@ def train(epoch):
        
         # Calculate G's loss based on this output
         errG_fake = criterion(output_fake, label)
-        # errG_recon = criterion(output_recon, label)
+        errG_recon = criterion(output_recon, label)
         
         # Calculate gradients for G
-        errG_fake.backward()
-        #errG_recon.backward()
+        errG_fake.backward(retain_graph=True)
+        errG_recon.backward(retain_graph=True)
 
         sim_loss = SIM(sim_real=sim_real.to(device), sim_recon=sim_recon.to(device))
-        sim_loss.backward()
-        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, is_gen=True)
+        sim_loss.backward(retain_graph=True)
+        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data)
         loss.backward()
         optimizerEG.step()
 
@@ -178,7 +179,7 @@ def train(epoch):
         recon_batch, mu, logvar = netEG(data)
 
         kld = KLD(mu.to(device), logvar.to(device))
-        kld.backward()
+        kld.backward(retain_graph=True)
         loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data)
         loss.backward()
 
