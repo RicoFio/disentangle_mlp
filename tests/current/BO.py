@@ -36,11 +36,7 @@ dtype = torch.float
 # # THIS WILL ACTUALLY  BE OUR FID VALUES 
 # # sample observed values and add some synthetic noise
 # train_Y = torch.sin(train_X * (2 * math.pi)) + 0.15 * torch.randn_like(train_X)
-
-
 #################################################################################
-
-
 
 train_X = np.array([0., 10., 50. , 100., 150.]).reshape(-1,1)
 train_Y = np.array([150.34, 143.56, 133.2, 160.7, 162.33]).reshape(-1,1)
@@ -59,12 +55,7 @@ bounds_Y = torch.tensor((torch.min(train_Y), torch.max(train_Y))).unsqueeze(1)
 train_X = normalize(train_X, bounds_X)
 train_Y = normalize(train_Y, bounds_Y)
 
-
-
-
 # ################################################################
-
-
 
 model = SingleTaskGP(train_X=train_X, train_Y=train_Y)
 model.likelihood.noise_covar.register_constraint("raw_noise", GreaterThan(1e-5))
@@ -77,9 +68,6 @@ mll = mll.to(train_X)
 
 # Define optimizer and specify parameters to optimize¶
 optimizer = SGD([{'params': model.parameters()}], lr=0.6)
-
-
-
 
 ###############################################################################
 # Fit model hyperparameters and noise level
@@ -117,7 +105,8 @@ f, ax = plt.subplots(1, 1, figsize=(6, 4))
 # test model on 101 regular spaced points on the interval [0, 1]
 # test_X = torch.linspace(0, 1, 101, dtype=dtype, device=device)
 
-test_X = torch.linspace(0., 300., 200, dtype=dtype, device=device)
+# gotta make up some bounds for test points 
+test_X = torch.linspace(0., 160., 200, dtype=dtype, device=device)
 bounds_X_test = torch.tensor((torch.min(test_X), torch.max(test_X))).unsqueeze(1)
 test_X = normalize(test_X, bounds_X_test)
 
@@ -134,6 +123,9 @@ with torch.no_grad():
     ax.plot(unnormalize(test_X, bounds_X_test).cpu().numpy(), unnormalize(posterior.mean, bounds_Y_test).cpu().numpy(), 'b')
     # Shade between the lower and upper confidence bounds
     ax.fill_between(unnormalize(test_X, bounds_X_test).cpu().numpy(), unnormalize(lower, bounds_Y_test).cpu().numpy(), unnormalize(upper, bounds_Y_test).cpu().numpy(), alpha=0.5)
+    ax.set_ylabel("FID score ")
+    ax.set_xlabel("Beta")
+
 ax.legend(['Observed Data', 'Mean', 'Confidence'])
 plt.tight_layout()
 plt.show()
