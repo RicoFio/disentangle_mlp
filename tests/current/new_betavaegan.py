@@ -53,13 +53,31 @@ optimizerD = optim.Adam(netD.parameters(), lr=opt.lr)
 criterion = nn.BCELoss()
 #############################
 # Reconstruction + KL divergence losses summed over all elements and batch
-def reconstruction_loss(recon_x, x, mu, logvar):
+# def reconstruction_loss(recon_x, x, mu, logvar):
+
+#     MSE = F.mse_loss(recon_x, x, reduction='sum')
+
+#     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
+
+#     return MSE + opt.beta * KLD
+
+def KLD(mu, logvar):
+    return opt.beta * (-0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp()))
+
+def reconstruction_loss(recon_x, x, is_gen, **kwargs):
 
     MSE = F.mse_loss(recon_x, x, reduction='sum')
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    return MSE + opt.beta * KLD
+    if is_gen:
+        sim_real = kwargs['sim_real']
+        sim_recon = kwargs['sim_recon']
+        # then add similarity
+        SIM = F.mse_loss(sim_recon, sim_real, reduction='sum')
+
+        return MSE + 0.1 * SIM
+    return MSE 
 
 def train(epoch):
     netD.train()
@@ -138,7 +156,7 @@ def train(epoch):
         # Calculate gradients for G
         errG_fake.backward()
         # errG_recon.backward()
-        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device))
+        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, is_gen=True, sim_real=sim_real.to(device), sim_recon=sim_recon.to(device))
         loss.backward()
         optimizerEG.step()
 
@@ -160,7 +178,9 @@ def train(epoch):
 
         recon_batch, mu, logvar = netEG(data)
 
-        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device))
+        kld = KLD(mu.to(device), logvar.to(device))
+        kld.backward()
+        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data)
         loss.backward()
 
         train_recon_enc_loss += loss.item()

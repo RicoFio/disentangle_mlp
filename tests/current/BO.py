@@ -15,7 +15,6 @@ from torch.optim import SGD
 from matplotlib import pyplot as plt
 import sys
 import numpy as np
-from sklearn import preprocessing
 from botorch.utils.transforms import standardize, normalize, unnormalize
 
 
@@ -106,7 +105,7 @@ f, ax = plt.subplots(1, 1, figsize=(6, 4))
 # test_X = torch.linspace(0, 1, 101, dtype=dtype, device=device)
 
 # gotta make up some bounds for test points 
-test_X = torch.linspace(0., 160., 200, dtype=dtype, device=device)
+test_X = torch.linspace(0., 150., 200, dtype=dtype, device=device)
 bounds_X_test = torch.tensor((torch.min(test_X), torch.max(test_X))).unsqueeze(1)
 test_X = normalize(test_X, bounds_X_test)
 
