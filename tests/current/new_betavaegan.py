@@ -53,19 +53,12 @@ optimizerD = optim.Adam(netD.parameters(), lr=opt.lr)
 criterion = nn.BCELoss()
 #############################
 # Reconstruction + KL divergence losses summed over all elements and batch
-def reconstruction_loss(recon_x, x, mu, logvar, is_gen, **kwargs):
+def reconstruction_loss(recon_x, x, mu, logvar):
 
     MSE = F.mse_loss(recon_x, x, reduction='sum')
 
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
 
-    if is_gen:
-        sim_real = kwargs['sim_real']
-        sim_recon = kwargs['sim_recon']
-        # then add similarity
-        SIM = F.mse_loss(sim_recon, sim_real, reduction='sum')
-
-        return MSE + SIM
     return MSE + opt.beta * KLD
 
 def train(epoch):
@@ -89,7 +82,7 @@ def train(epoch):
 
         label = torch.full((data.size()[0],), real_label, device=device)
         # Forward pass real batch through D
-        output, sim_real = netD(data)
+        output, _ = netD(data)
         # Calculate loss on all-real batch
         errD_real = criterion(output, label)
         # Calculate gradients for D in backward pass
@@ -137,7 +130,7 @@ def train(epoch):
         output_fake, _ = netD(fake)
 
         # should add this too
-        output_recon, sim_recon = netD(recon_batch)
+        output_recon, _ = netD(recon_batch)
        
         # Calculate G's loss based on this output
         errG_fake = criterion(output_fake, label)
@@ -145,7 +138,7 @@ def train(epoch):
         # Calculate gradients for G
         errG_fake.backward()
         errG_recon.backward()
-        recon_dec_loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device), is_gen=True, sim_real=sim_real.detach(), sim_recon=sim_recon.detach())
+        recon_dec_loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device))
         recon_dec_loss.backward()
         optimizerEG.step()
 
@@ -167,7 +160,7 @@ def train(epoch):
 
         recon_batch, mu, logvar = netEG(data)
 
-        recon_enc_loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device), is_gen=False)
+        recon_enc_loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device))
         recon_enc_loss.backward()
 
         train_recon_enc_loss += recon_enc_loss.item()
