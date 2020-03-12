@@ -138,8 +138,8 @@ def train(epoch):
         # Calculate gradients for G
         errG_fake.backward()
         errG_recon.backward()
-        recon_dec_loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device))
-        recon_dec_loss.backward()
+        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device))
+        loss.backward()
         optimizerEG.step()
 
         ### Encoder ###
@@ -160,11 +160,11 @@ def train(epoch):
 
         recon_batch, mu, logvar = netEG(data)
 
-        recon_enc_loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device))
-        recon_enc_loss.backward()
+        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, mu=mu.to(device), logvar=logvar.to(device))
+        loss.backward()
 
-        train_recon_enc_loss += recon_enc_loss.item()
-        train_recon_dec_loss += recon_dec_loss.item()
+        train_recon_enc_loss += loss.item()
+        train_recon_dec_loss += loss.item()
 
         optimizerEG.step()
         break
