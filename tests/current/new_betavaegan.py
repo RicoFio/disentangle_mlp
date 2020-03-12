@@ -64,17 +64,14 @@ criterion = nn.BCELoss()
 def KLD(mu, logvar):
     return opt.beta * (-0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp()))
 
-def reconstruction_loss(recon_x, x, is_gen, **kwargs):
+def SIM(sim_recon, sim_real):
+    SIM = F.mse_loss(sim_recon, sim_real, reduction='sum')
+    return 0.1 * SIM
+
+def reconstruction_loss(recon_x, x):
 
     MSE = F.mse_loss(recon_x, x, reduction='sum')
 
-    if is_gen:
-        sim_real = kwargs['sim_real']
-        sim_recon = kwargs['sim_recon']
-        # then add similarity
-        SIM = F.mse_loss(sim_recon, sim_real, reduction='sum')
-
-        return MSE + 0.1 * SIM
     return MSE 
 
 def train(epoch):
@@ -150,11 +147,15 @@ def train(epoch):
        
         # Calculate G's loss based on this output
         errG_fake = criterion(output_fake, label)
-        errG_recon = criterion(output_recon, label)
+        # errG_recon = criterion(output_recon, label)
+        
         # Calculate gradients for G
         errG_fake.backward()
         #errG_recon.backward()
-        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, is_gen=True, sim_real=sim_real.to(device), sim_recon=sim_recon.to(device))
+
+        sim_loss = SIM(sim_real=sim_real.to(device), sim_recon=sim_recon.to(device))
+        sim_loss.backward()
+        loss = reconstruction_loss(recon_x=recon_batch.to(device), x=data, is_gen=True)
         loss.backward()
         optimizerEG.step()
 
