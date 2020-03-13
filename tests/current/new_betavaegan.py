@@ -187,7 +187,6 @@ def train(epoch):
         train_recon_dec_loss += loss.item()
 
         optimizerEG.step()
-        break
 
     
     avg_recon_enc_loss = train_recon_enc_loss / len(train_loader.dataset)
@@ -221,9 +220,9 @@ if __name__ == "__main__":
                     }, opt.model_path + f"/model_{str(epoch+1)}.tar")
                 
                 # Calculate FID score
-                fn = lambda x: model.module.decode(x).cpu()
-                generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_recon, device=device)
-                fid = get_fid(opt.fid_path_recon, opt.fid_path_pretrained)
+                fn = lambda x: netEG.module.decode(x).cpu()
+                generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_recons, device=device)
+                fid = get_fid(opt.fid_path_recons, opt.fid_path_pretrained)
                 print('====> Epoch: {} Avg Encoder Loss: {:.4f} Avg Decoder Loss: {:.4f} Avg Discriminator Loss: {:.4f} FID: {:.4f}'.format(
                     epoch, enc_loss, dec_loss, dis_loss, fid))
 
