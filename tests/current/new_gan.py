@@ -146,6 +146,10 @@ if __name__ == "__main__":
     torch.manual_seed(opt.seed)
 
     start_epoch = 0
+    
+    print(opt.load_path)
+    raise ValueError()
+
     if opt.load_path:
         checkpoint = torch.load(opt.load_path)
         start_epoch = checkpoint['epoch']
@@ -171,7 +175,6 @@ if __name__ == "__main__":
                 fn = lambda x: netG(x).detach().cpu()
                 generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
                 fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
-                fid=0
                 # Output stats
                 print('====> Epoch: {} Average loss G: {:.4f} Average loss D: {:.4f} FID: {:.4f}'.format(
                     epoch, avg_loss_G, avg_loss_D, fid))
@@ -185,7 +188,19 @@ if __name__ == "__main__":
                     })
                 
     elif opt.fid:
-        raise NotImplementedError
+        with torch.no_grad():
+            # Calculate FID
+            fn = lambda x: netG(x).detach().cpu()
+            generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
+            fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
+            # Log stats
+            logger.log({
+                "Epoch": epoch, 
+                "Avg Loss G": avg_loss_G, 
+                "Avg Loss E": avg_loss_D,
+                "FID": fid
+            })
+       
 
 
 
