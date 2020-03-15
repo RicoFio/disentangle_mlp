@@ -147,6 +147,7 @@ def load_model(path):
     netD.load_state_dict(checkpoint['netD'])
     optimizerG.load_state_dict(checkpoint['G_trainer'])
     optimizerD.load_state_dict(checkpoint['D_trainer'])
+    print(f"Loaded model at epoch {start_epoch}\n")
     return start_epoch
 
 
@@ -189,7 +190,7 @@ if __name__ == "__main__":
                     "FID": fid
                     })
                 
-    elif opt.fid:
+    elif opt.calc_fid:
         for m in opt.load_path:
             epoch = load_model(m)
             with torch.no_grad():
@@ -200,8 +201,8 @@ if __name__ == "__main__":
                 # Log stats
                 logger.log({
                     "Epoch": epoch, 
-                    "Avg Loss G": avg_loss_G, 
-                    "Avg Loss E": avg_loss_D,
+                    "Avg Loss G": "N/A", 
+                    "Avg Loss E": "N/A",
                     "FID": fid
                 })
     

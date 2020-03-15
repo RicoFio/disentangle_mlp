@@ -1,0 +1,79 @@
+{
+    "meta_data": {
+        "file": "logger.py",
+        "datetime": "2020-03-15 08:26:02.133276",
+        "args": {
+            "name": "cont_train",
+            "seed": 999,
+            "num_workers": 4,
+            "log_interval": 10,
+            "use_gpus": "1",
+            "load_path": [
+                "./data/gan/models/model_6.tar"
+            ],
+            "save_path": "./data/cont_train",
+            "log_path": "./data/cont_train/log",
+            "fid_path_pretrained": "/home/shared/evaluation/fid/fid_stats_celeba.npz",
+            "dataset": "celebA",
+            "image_root_train": "/home/shared/data/celebA/train",
+            "image_root_val": "/home/shared/data/celebA/val",
+            "image_root_test": "/home/shared/data/celebA/test",
+            "epochs": 30,
+            "batch_size_train": 256,
+            "batch_size_val": 256,
+            "batch_size_test": 256,
+            "n_samples": 1000,
+            "n_z": [
+                256,
+                8,
+                8
+            ],
+            "n_hidden": 128,
+            "lr": 0.0003,
+            "beta": 50,
+            "input_channels": 3,
+            "img_size": 64,
+            "calc_fid": true,
+            "to_train": true,
+            "model_path": "./data/cont_train/models",
+            "results_path_recons": "./data/cont_train/results/recons",
+            "results_path_samples": "./data/cont_train/results/samples",
+            "test_results_path_recons": "./data/cont_train/test_results/recons",
+            "test_results_path_samples": "./data/cont_train/test_results/samples",
+            "fid_path_recons": "./data/cont_train/fid_results/recons",
+            "fid_path_samples": "./data/cont_train/fid_results/samples"
+        }
+    },
+    "output": [
+        {
+            "Epoch": 6,
+            "Avg Loss G": 0.005954371818776465,
+            "Avg Loss E": 3.658128179329527e-08,
+            "FID": 197.2975825182658
+        },
+        {
+            "Epoch": 7,
+            "Avg Loss G": 0.006109448302099816,
+            "Avg Loss E": 3.753400975665085e-08,
+            "FID": 207.5868476163158
+        },
+        {
+            "Epoch": 8,
+            "Avg Loss G": 0.006030137765828751,
+            "Avg Loss E": 3.704675750489185e-08,
+            "FID": 200.9907694025171
+        },
+        {
+            "Epoch": 9,
+            "Avg Loss G": 0.006085958820385636,
+            "Avg Loss E": 3.7389699764611856e-08,
+            "FID": 196.55270222180857
+        },
+        {
+            "Epoch": 10,
+            "Avg Loss G": 0.005743405058346576,
+            "Avg Loss E": 3.528518629452775e-08,
+            "FID": 202.0272502237209
+        }
+    ]
+}
