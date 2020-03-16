@@ -207,7 +207,7 @@ if __name__ == "__main__":
             fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
             print(f"Calculated FID: {fid}")
         if opt.test_samples:
-            generate_samples(fn, start_epoch, 5, opt.n_hidden, opt.test_results_path_samples, nrow=1, device=device)
+            generate_samples(fn, epoch, 5, opt.n_hidden, opt.test_results_path_samples, nrow=1, device=device)
             print("Generated samples")
 
 
