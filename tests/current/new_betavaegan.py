@@ -200,17 +200,20 @@ def train(epoch):
 
     return avg_recon_enc_loss, avg_recon_dec_loss, avg_dis_loss, avg_Dx
 
+def load_model(path):
+    checkpoint = torch.load(path)
+    netEG.module.load_state_dict(checkpoint['encoder_decoder_model'])
+    netD.load_state_dict(checkpoint['discriminator_model'])
+    optimizerEG.load_state_dict(checkpoint['encoder_decoder_optimizer'])
+    optimizerD.load_state_dict(checkpoint['discriminator_optimizer'])
+    return checkpoint['epoch']
+
 if __name__ == "__main__":
 #    set_up_globals()
 
     start_epoch = 0
-    if opt.load_path:
-        checkpoint = torch.load(opt.load_path)
-        start_epoch = checkpoint['epoch']
-        netEG.module.load_state_dict(checkpoint['encoder_decoder_model'])
-        netD.load_state_dict(checkpoint['discriminator_model'])
-        optimizerEG.load_state_dict(checkpoint['encoder_decoder_optimizer'])
-        optimizerD.load_state_dict(checkpoint['discriminator_optimizer'])
+    if opt.load_path and len(opt.load_path) < 2:
+        start_epoch = load_model(opt.load_path[0])
 
     if opt.to_train:
         for epoch in tqdm(range(start_epoch, opt.epochs)):
@@ -225,9 +228,12 @@ if __name__ == "__main__":
                     }, opt.model_path + f"/model_{str(epoch+1)}.tar")
                 
                 # Calculate FID score
-                fn = lambda x: netEG.module.decode(x).cpu()
-                generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_recons, device=device)
-                fid = get_fid(opt.fid_path_recons, opt.fid_path_pretrained)
+                fid = "N/A"
+                if opt.calc_fid:
+                    fn = lambda x: netEG.module.decode(x).cpu()
+                    generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_recons, device=device)
+                    fid = get_fid(opt.fid_path_recons, opt.fid_path_pretrained)
+
                 print('====> Epoch: {} Avg Encoder Loss: {:.4f} Avg Decoder Loss: {:.4f} Avg Discriminator Loss: {:.4f} FID: {:.4f} Dx: {:.4f}'.format(
                     epoch, enc_loss, dec_loss, dis_loss, fid, Dx))
 
@@ -238,7 +244,25 @@ if __name__ == "__main__":
                     "Avg Dnc Loss": dec_loss, 
                     "Avg Dis Loss": dis_loss,
                     "FID":fid})
-    elif opt.fid:
-        raise NotImplementedError
-    elif opt.test_recons:
-        gen_reconstructions(fn, test_loader, epoch, opt.test_results_path_recons, nrow=1, store_origs=True, path_for_originals=opt.test_results_path_originals)
+
+    tmp_epoch = 0
+    for m in opt.load_path:
+        epoch = load_model(m)
+
+        # Quick fix to load multiple models and not have overwriting happening
+        epoch = epoch if epoch is not tmp_epoch and tmp_epoch < epoch else tmp_epoch + 1
+        tmp_epoch = epoch
+
+        if opt.calc_fid:
+            fn = lambda x: netEG.module.decode(x).cpu()
+            generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_recons, device=device)
+            fid = get_fid(opt.fid_path_recons, opt.fid_path_pretrained)
+        if opt.test_recons:
+            fn = lambda x: model(x.to(device))[0]
+            gen_reconstructions(fn, test_loader, epoch, opt.test_results_path_recons, nrow=1, path_for_originals=opt.test_results_path_originals)
+            print("Generated reconstructions")
+        if opt.test_samples:
+            fn = lambda x: model.module.decode(x).cpu()
+            generate_samples(fn, start_epoch, 5, opt.n_hidden, opt.test_results_path_samples, nrow=1, device=device)
+            print("Generated samples")
+

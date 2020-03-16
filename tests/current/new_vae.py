@@ -69,13 +69,16 @@ def train(epoch):
     avg_loss = train_loss / len(train_loader.dataset)
     return avg_loss
 
+def load_model(path):
+    checkpoint = torch.load(path)
+    model.module.load_state_dict(checkpoint['VAE_model'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+    return checkpoint['epoch']
+
 if __name__ == "__main__":
     start_epoch = 0
     if opt.load_path and len(opt.load_path) < 2:
-        checkpoint = torch.load(opt.load_path[0])
-        model.module.load_state_dict(checkpoint['VAE_model'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        start_epoch = checkpoint['epoch']
+        start_epoch = load_model(opt.load_path[0])
 
     if opt.to_train:
         for epoch in tqdm(range(start_epoch, opt.epochs)):
@@ -88,9 +91,10 @@ if __name__ == "__main__":
                     'optimizer': optimizer.state_dict()}, opt.model_path + f"model_{str(epoch+1)}.tar")
 
                 # Calculate FID
-                fn = lambda x: model.module.decode(x).cpu()
-                generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
-                fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
+                if opt.calc_fid:
+                    fn = lambda x: model.module.decode(x).cpu()
+                    generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
+                    fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
                 print('====> Epoch: {} Average loss: {:.4f} FID: {:.4f}'.format(
                     epoch, avg_loss, fid))
 
@@ -101,13 +105,25 @@ if __name__ == "__main__":
                     "FID": fid
                     })
 
-    elif opt.test_recons:
-        fn = lambda x: model(x.to(device))[0]
-        gen_reconstructions(fn, test_loader, start_epoch, opt.test_results_path_recons, nrow=1, path_for_originals=opt.test_results_path_originals)
-        print("Generated reconstructions")
-    elif opt.test_samples:
-        fn = lambda x: model.module.decode(x).cpu()
-        generate_samples(fn, start_epoch, 5, opt.n_hidden, opt.test_results_path_samples, nrow=1, device=device)
-        print("Generated samples")
+    tmp_epoch = 0
+    for m in opt.load_path:
+        epoch = load_model(m)
+
+        # Quick fix to load multiple models and not have overwriting happening
+        epoch = epoch if epoch is not tmp_epoch and tmp_epoch < epoch else tmp_epoch + 1
+        tmp_epoch = epoch
+
+        if opt.calc_fid:
+            fn = lambda x: model.module.decode(x).cpu()
+            generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
+            fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
+        if opt.test_recons:
+            fn = lambda x: model(x.to(device))[0]
+            gen_reconstructions(fn, test_loader, epoch, opt.test_results_path_recons, nrow=1, path_for_originals=opt.test_results_path_originals)
+            print("Generated reconstructions")
+        if opt.test_samples:
+            fn = lambda x: model.module.decode(x).cpu()
+            generate_samples(fn, start_epoch, 5, opt.n_hidden, opt.test_results_path_samples, nrow=1, device=device)
+            print("Generated samples")
 
 

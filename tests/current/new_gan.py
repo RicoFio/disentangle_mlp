@@ -175,9 +175,11 @@ if __name__ == "__main__":
                 
 
                 # Calculate FID
-                fn = lambda x: netG(x).detach().cpu()
-                generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
-                fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
+                fid = "N/A"
+                if opt.calc_fid:
+                    fn = lambda x: netG(x).detach().cpu()
+                    generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
+                    fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
                 # Output stats
                 print('====> Epoch: {} Average loss G: {:.4f} Average loss D: {:.4f} FID: {:.4f}'.format(
                     epoch, avg_loss_G, avg_loss_D, fid))
@@ -190,22 +192,23 @@ if __name__ == "__main__":
                     "FID": fid
                     })
                 
-    elif opt.calc_fid:
-        for m in opt.load_path:
-            epoch = load_model(m)
-            with torch.no_grad():
-                # Calculate FID
-                fn = lambda x: netG(x).detach().cpu()
-                generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
-                fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
-                # Log stats
-                logger.log({
-                    "Epoch": epoch, 
-                    "Avg Loss G": "N/A", 
-                    "Avg Loss E": "N/A",
-                    "FID": fid
-                })
+    
+    tmp_epoch = 0
+    for m in opt.load_path:
+        epoch = load_model(m)
 
+        # Quick fix to load multiple models and not have overwriting happening
+        epoch = epoch if epoch is not tmp_epoch and tmp_epoch < epoch else tmp_epoch + 1
+        tmp_epoch = epoch
+
+        fn = lambda x: netG(x).detach().cpu()
+        if opt.calc_fid:
+            generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
+            fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
+            print(f"Calculated FID: {fid}")
+        if opt.test_samples:
+            generate_samples(fn, start_epoch, 5, opt.n_hidden, opt.test_results_path_samples, nrow=1, device=device)
+            print("Generated samples")
 
 
 
