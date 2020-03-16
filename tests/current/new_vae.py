@@ -29,8 +29,8 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 train_loader, val_loader, test_loader = get_data_loader(opt)
 
 model = VAE(opt=opt)
-model = torch.nn.DataParallel(model)
 model = model.to(device)
+model = torch.nn.DataParallel(model)
 model.apply(weights_init)
 optimizer = optim.Adam(model.parameters(), lr=opt.lr)
 
@@ -71,9 +71,9 @@ def train(epoch):
 
 if __name__ == "__main__":
     start_epoch = 0
-    if opt.load_path:
-        checkpoint = torch.load(opt.load_path)
-        model.load_state_dict(checkpoint['VAE_model'])
+    if opt.load_path and len(opt.load_path) < 2:
+        checkpoint = torch.load(opt.load_path[0])
+        model.module.load_state_dict(checkpoint['VAE_model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         start_epoch = checkpoint['epoch']
 
@@ -102,4 +102,12 @@ if __name__ == "__main__":
                     })
 
     elif opt.test_recons:
-        gen_reconstructions(fn, test_loader, epoch, opt.test_results_path_recons, nrow=1, store_origs=True, path_for_originals=opt.test_results_path_originals)
+        fn = lambda x: model(x.to(device))[0]
+        gen_reconstructions(fn, test_loader, start_epoch, opt.test_results_path_recons, nrow=1, path_for_originals=opt.test_results_path_originals)
+        print("Generated reconstructions")
+    elif opt.test_samples:
+        fn = lambda x: model.module.decode(x).cpu()
+        generate_samples(fn, start_epoch, 5, opt.n_hidden, opt.test_results_path_samples, nrow=1, device=device)
+        print("Generated samples")
+
+

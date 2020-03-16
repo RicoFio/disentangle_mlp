@@ -51,6 +51,8 @@ class EnvSetter():
 
         self.parser.add_argument('--calc_fid', type=str2bool, default=True)
         self.parser.add_argument('--to_train', type=str2bool, default=True)
+        self.parser.add_argument('--test_recons', type=str2bool, default=False)
+        self.parser.add_argument('--test_samples', type=str2bool, default=False)
 
         self.parser = self.parser.parse_args()
 
@@ -88,7 +90,7 @@ class EnvSetter():
         self.parser.results_path_recons = save_path + '/results/recons'
         self.parser.results_path_samples = save_path + '/results/samples'
         self.parser.test_results_path_recons = save_path + '/test_results/recons'
-        self.parser.test_results_path_orignals = save_path + '/test_results/originals'
+        self.parser.test_results_path_originals = save_path + '/test_results/originals'
         self.parser.test_results_path_samples = save_path + '/test_results/samples'
         self.parser.fid_path_samples = save_path + '/fid_results/samples'
 
