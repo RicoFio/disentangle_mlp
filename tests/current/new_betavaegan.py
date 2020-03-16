@@ -46,8 +46,8 @@ netD = DataParallel(netD.to(device))
 netEG.apply(weights_init)
 netD.apply(weights_init)
 
-optimizerEG = optim.Adam(netEG.parameters(), lr=opt.lr)
-optimizerD = optim.Adam(netD.parameters(), lr=opt.lr)
+optimizerEG = optim.Adam(netEG.parameters(), lr=1e-3)
+optimizerD = optim.Adam(netD.parameters(), lr=1e-3)
 
 # Initialize BCELoss function
 criterion = nn.BCELoss()
@@ -66,7 +66,7 @@ def KLD(mu, logvar):
 
 def SIM(sim_recon, sim_real):
     SIM = F.mse_loss(sim_recon, sim_real, reduction='sum')
-    return 0.1 * SIM
+    return 0.5 * SIM
 
 def reconstruction_loss(recon_x, x):
 
@@ -82,6 +82,7 @@ def train(epoch):
     train_recon_enc_loss = 0
     train_recon_dec_loss = 0
     avg_dis_loss = 0
+    avg_Dx = 0
 
     for batch_idx, (data, _) in tqdm(enumerate(train_loader)):
         # create labels 
@@ -100,6 +101,8 @@ def train(epoch):
         errD_real = criterion(output, label)
         # Calculate gradients for D in backward pass
         errD_real.backward()
+
+        D_x = output.mean().item()
 
         avg_dis_loss += output.mean().item()
 
@@ -185,6 +188,7 @@ def train(epoch):
 
         train_recon_enc_loss += loss.item()
         train_recon_dec_loss += loss.item()
+        avg_Dx+= D_x
 
         optimizerEG.step()
 
@@ -192,8 +196,9 @@ def train(epoch):
     avg_recon_enc_loss = train_recon_enc_loss / len(train_loader.dataset)
     avg_recon_dec_loss = train_recon_dec_loss / len(train_loader.dataset)
     avg_dis_loss = avg_dis_loss / len(train_loader.dataset)
+    avg_Dx = avg_Dx / len(train_loader.dataset)
 
-    return avg_recon_enc_loss, avg_recon_dec_loss, avg_dis_loss
+    return avg_recon_enc_loss, avg_recon_dec_loss, avg_dis_loss, avg_Dx
 
 if __name__ == "__main__":
 #    set_up_globals()
@@ -209,7 +214,7 @@ if __name__ == "__main__":
 
     if opt.to_train:
         for epoch in tqdm(range(start_epoch, opt.epochs)):
-            enc_loss, dec_loss, dis_loss = train(epoch)
+            enc_loss, dec_loss, dis_loss, Dx = train(epoch)
             with torch.no_grad():
                 torch.save({
                     'epoch': epoch + 1,
@@ -223,8 +228,8 @@ if __name__ == "__main__":
                 fn = lambda x: netEG.module.decode(x).cpu()
                 generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_recons, device=device)
                 fid = get_fid(opt.fid_path_recons, opt.fid_path_pretrained)
-                print('====> Epoch: {} Avg Encoder Loss: {:.4f} Avg Decoder Loss: {:.4f} Avg Discriminator Loss: {:.4f} FID: {:.4f}'.format(
-                    epoch, enc_loss, dec_loss, dis_loss, fid))
+                print('====> Epoch: {} Avg Encoder Loss: {:.4f} Avg Decoder Loss: {:.4f} Avg Discriminator Loss: {:.4f} FID: {:.4f} Dx: {:.4f}'.format(
+                    epoch, enc_loss, dec_loss, dis_loss, fid, Dx))
 
                 # Log epoch statistics
                 logger.log({
