@@ -123,7 +123,7 @@ if __name__ == "__main__":
             print("Generated reconstructions")
         if opt.test_samples:
             fn = lambda x: model.module.decode(x).cpu()
-            generate_samples(fn, start_epoch, 5, opt.n_hidden, opt.test_results_path_samples, nrow=1, device=device)
+            generate_samples(fn, epoch, 5, opt.n_hidden, opt.test_results_path_samples, nrow=1, device=device)
             print("Generated samples")
 
 
