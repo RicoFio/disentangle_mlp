@@ -240,3 +240,5 @@ if __name__ == "__main__":
                     "FID":fid})
     elif opt.fid:
         raise NotImplementedError
+    elif opt.test_recons:
+        gen_reconstructions(fn, test_loader, epoch, opt.test_results_path_recons, nrow=1, store_origs=True, path_for_originals=opt.test_results_path_originals)

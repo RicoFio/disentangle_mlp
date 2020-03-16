@@ -10,13 +10,13 @@ def gen_fid_reconstructions(fn, dl, epoch, results_path):
         for i,x in enumerate(batch):
             save_image(x.cpu(), results_path + f'/recon_{i}_{str(epoch)}.png', normalize=True)
 
-def gen_reconstructions(fn, dl, epoch, results_path, store_origs=False, path_for_originals=""):
+def gen_reconstructions(fn, dl, epoch, results_path, nrow=8, path_for_originals=""):
     with torch.no_grad():
         orig_imgs, _ = next(iter(dl))
         batch = fn(orig_imgs).cpu()
-        save_image(batch.cpu(), results_path + f'/recon_{str(epoch)}.png', normalize=True)
-        if store_origs and path_for_originals:
-            save_image(orig_imgs.cpu(), path_for_originals + f'/original_{str(epoch)}.png', normalize=True)
+        save_image(batch.cpu(), results_path + f'/recon_{str(epoch)}.pdf',nroe=nrow, normalize=True)
+        if path_for_originals:
+            save_image(orig_imgs.cpu(), path_for_originals + f'/original_{str(epoch)}.pdf', normalize=True)
 
 def generate_fid_samples(fn, epoch, n_samples, n_hidden, results_path, device="cpu"):
     with torch.no_grad():

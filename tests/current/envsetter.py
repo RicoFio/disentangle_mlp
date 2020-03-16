@@ -79,8 +79,8 @@ class EnvSetter():
         Path(save_path + '/results/recons').mkdir(parents=True, exist_ok=True)
         Path(save_path + '/results/samples').mkdir(parents=True, exist_ok=True)
         Path(save_path + '/test_results/recons').mkdir(parents=True, exist_ok=True)
+        Path(save_path + '/test_results/originals').mkdir(parents=True, exist_ok=True)
         Path(save_path + '/test_results/samples').mkdir(parents=True, exist_ok=True)
-        Path(save_path + '/fid_results/recons').mkdir(parents=True, exist_ok=True)
         Path(save_path + '/fid_results/samples').mkdir(parents=True, exist_ok=True)
         Path(self.parser.log_path).mkdir(parents=True, exist_ok=True)
 
@@ -88,8 +88,8 @@ class EnvSetter():
         self.parser.results_path_recons = save_path + '/results/recons'
         self.parser.results_path_samples = save_path + '/results/samples'
         self.parser.test_results_path_recons = save_path + '/test_results/recons'
+        self.parser.test_results_path_orignals = save_path + '/test_results/originals'
         self.parser.test_results_path_samples = save_path + '/test_results/samples'
-        self.parser.fid_path_recons = save_path + '/fid_results/recons'
         self.parser.fid_path_samples = save_path + '/fid_results/samples'
 
     def get_parser(self):

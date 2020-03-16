@@ -205,7 +205,6 @@ if __name__ == "__main__":
                     "Avg Loss E": "N/A",
                     "FID": fid
                 })
-    
 
 
 
