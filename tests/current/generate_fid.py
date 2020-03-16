@@ -20,21 +20,21 @@ if __name__ == "__main__":
 #    set_up_globals()
     
     checkpoint = torch.load(opt.load_path, map_location=device)
-    model.load_state_dict(checkpoint['encoder_decoder_model'])
-    optimizer.load_state_dict(checkpoint['encoder_decoder_optimizer'])
-    netD.load_state_dict(checkpoint['discriminator_model'])
-    optimizerD.load_state_dict(checkpoint['discriminator_optimizer'])
-    epoch = checkpoint['epoch']
+    #model.load_state_dict(checkpoint['encoder_decoder_model'])
+    #optimizer.load_state_dict(checkpoint['encoder_decoder_optimizer'])
+    #netD.load_state_dict(checkpoint['discriminator_model'])
+    #optimizerD.load_state_dict(checkpoint['discriminator_optimizer'])
+    #epoch = checkpoint['epoch']
 
-    with torch.no_grad():
-        # Calculate FID
-        fn = lambda x: netG(x).detach().cpu()
-        generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
-        fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
-        # Log stats
-        logger.log({
-            "Epoch": epoch, 
-            "Avg Loss G": "N/A", 
-            "Avg Loss E": "N/A",
-            "FID": fid
-        })
+    #with torch.no_grad():
+    #    # Calculate FID
+    #    fn = lambda x: netG(x).detach().cpu()
+    #    generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
+    #    fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
+    #    # Log stats
+    #    logger.log({
+    #        "Epoch": epoch, 
+    #        "Avg Loss G": "N/A", 
+    #        "Avg Loss E": "N/A",
+    #        "FID": fid
+    #    })
