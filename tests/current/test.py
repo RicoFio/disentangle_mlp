@@ -62,10 +62,17 @@ def arg_parse():
     parser.add_argument('--input_channels', type=int, default=3)
     parser.add_argument('--n_hidden', type=int, default=128)
     parser.add_argument('--img_size', type=int, default=64)
+    parser.add_argument('--lr', type=int, default=3e-4)
     parser.add_argument('--load_model', type=str, default="")
     parser.add_argument('--save_path', type=str, default="./data/betavaegan")
     parser.add_argument('--log_path', type=str, default="./data/betavaegan/log")
     parser.add_argument('--fid_path_pretrained', type=str, default="/home/shared/save_riccardo/fid/celeba/fid_stats_celeba.npz")
+    parser.add_argument('--image_root_val', type=str, default="/home/shared/data/celebA/val")
+    parser.add_argument('--image_root_test', type=str, default="/home/shared/data/celebA/test")
+    parser.add_argument('--image_root_train', type=str, default="/home/shared/data/celebA/train")
+    parser.add_argument('--batch_size_train', type=int, default=256)
+    parser.add_argument('--batch_size_test', type=int, default=256)
+    parser.add_argument('--batch_size_val', type=int, default=256)
 
     def str2bool(v):
         if v.lower() == 'true':
@@ -116,7 +123,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 torch.manual_seed(opt.seed)
 
 # Load data 
-train_loader, test_loader = get_data_loader(opt)
+train_loader, val_loader, test_loader = get_data_loader(opt)
 
 model = VAE(opt=opt)
 model = torch.nn.DataParallel(model)
@@ -350,5 +357,5 @@ if __name__ == "__main__":
         generate_samples(epoch, n_samples=80,results_path="quick_results", singles=False)
     # Generate images for FID analysis
     elif opt.load_model and opt.fid:
-        generate_reconstructions(epoch, results_path="fid_results")
-        generate_samples(epoch, n_samples=1000,results_path="fid_results")
+        generate_samples(start_epoch, n_samples=1000,results_path="fid_results")
+        print(get_fid(opt.save_path + '/fid_results', "/home/shared/evaluation/fid/fid_stats_celeba.npz"))
