@@ -16,7 +16,7 @@ def gen_reconstructions(fn, dl, epoch, results_path, nrow=8, path_for_originals=
         batch = fn(orig_imgs).cpu()
         save_image(batch.cpu(), results_path + f'/recon_{str(epoch)}.pdf',nrow=nrow, normalize=True)
         if path_for_originals:
-            save_image(orig_imgs.cpu(), path_for_originals + f'/original_{str(epoch)}.pdf', normalize=True)
+            save_image(orig_imgs.cpu(), path_for_originals + f'/original_{str(epoch)}.pdf', nrow=nrow, normalize=True)
 
 def generate_fid_samples(fn, epoch, n_samples, n_hidden, results_path, device="cpu"):
     with torch.no_grad():

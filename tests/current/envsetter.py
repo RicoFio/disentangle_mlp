@@ -35,7 +35,7 @@ class EnvSetter():
                                 help='input batch size for training (default: 256)')
         self.parser.add_argument('--batch_size_val', type=int, default=256, metavar='N', 
                                 help='input batch size for validation (default: 128)')
-        self.parser.add_argument('--batch_size_test', type=int, default=256, metavar='N', 
+        self.parser.add_argument('--batch_size_test', type=int, default=5, metavar='N', 
                                 help='input batch size for testing (default: 128)')
         self.parser.add_argument("--n_samples", type=int, default=1000)
         self.parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8])
