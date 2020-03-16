@@ -258,11 +258,11 @@ if __name__ == "__main__":
             generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_recons, device=device)
             fid = get_fid(opt.fid_path_recons, opt.fid_path_pretrained)
         if opt.test_recons:
-            fn = lambda x: model(x.to(device))[0]
+            fn = lambda x: netEG(x.to(device))[0]
             gen_reconstructions(fn, test_loader, epoch, opt.test_results_path_recons, nrow=1, path_for_originals=opt.test_results_path_originals)
             print("Generated reconstructions")
         if opt.test_samples:
-            fn = lambda x: model.module.decode(x).cpu()
+            fn = lambda x: netEG.module.decode(x).cpu()
             generate_samples(fn, start_epoch, 5, opt.n_hidden, opt.test_results_path_samples, nrow=1, device=device)
             print("Generated samples")
 
