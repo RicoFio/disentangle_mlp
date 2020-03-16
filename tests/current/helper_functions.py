@@ -14,7 +14,7 @@ def gen_reconstructions(fn, dl, epoch, results_path, store_origs=False, path_for
     with torch.no_grad():
         orig_imgs, _ = next(iter(dl))
         batch = fn(orig_imgs).cpu()
-        save_image(batch.cpu(), results_path + f'/recon_{str(epoch)}.png')
+        save_image(batch.cpu(), results_path + f'/recon_{str(epoch)}.png', normalize=True)
         if store_origs and path_for_originals:
             save_image(orig_imgs.cpu(), path_for_originals + f'/original_{str(epoch)}.png', normalize=True)
 

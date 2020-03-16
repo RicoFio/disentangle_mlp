@@ -3,7 +3,6 @@
 ############################
 import os
 from pathlib import Path
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
 import argparse
 import torch
@@ -30,6 +29,7 @@ from helper_functions import *
 
 # function to add to JSON 
 opt = EnvSetter("vaegan").get_parser()
+os.environ["CUDA_VISIBLE_DEVICES"] = opt.use_gpus
 logger = Logger(opt.log_path, opt)
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

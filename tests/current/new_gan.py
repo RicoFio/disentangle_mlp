@@ -140,21 +140,28 @@ def train():
 
     return avg_loss_G, avg_loss_D
 
+def load_model(path):
+    checkpoint = torch.load(path)
+    start_epoch = checkpoint['epoch']
+    netG.load_state_dict(checkpoint['netG'])
+    netD.load_state_dict(checkpoint['netD'])
+    optimizerG.load_state_dict(checkpoint['G_trainer'])
+    optimizerD.load_state_dict(checkpoint['D_trainer'])
+    print(f"Loaded model at epoch {start_epoch}\n")
+    return start_epoch
+
 
 if __name__ == "__main__":
     random.seed(opt.seed)
     torch.manual_seed(opt.seed)
 
-    start_epoch = 0
-    if opt.load_path:
-        checkpoint = torch.load(opt.load_path)
-        start_epoch = checkpoint['epoch']
-        netG.load_state_dict(checkpoint['netG'])
-        netD.load_state_dict(checkpoint['netD'])
-        optimizerG.load_state_dict(checkpoint['G_trainer'])
-        optimizerD.load_state_dict(checkpoint['D_trainer'])
-
     if opt.to_train:
+        start_epoch = 0
+        if opt.load_path and len(opt.load_path) < 2:
+            start_epoch = load_model(opt.load_path[0])
+        else:
+            raise ValueError("Cannot load more than one model for training")
+
         for epoch in range(start_epoch, opt.epochs):
             avg_loss_G, avg_loss_D = train()
             with torch.no_grad():
@@ -171,7 +178,6 @@ if __name__ == "__main__":
                 fn = lambda x: netG(x).detach().cpu()
                 generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
                 fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
-                fid=0
                 # Output stats
                 print('====> Epoch: {} Average loss G: {:.4f} Average loss D: {:.4f} FID: {:.4f}'.format(
                     epoch, avg_loss_G, avg_loss_D, fid))
@@ -184,8 +190,22 @@ if __name__ == "__main__":
                     "FID": fid
                     })
                 
-    elif opt.fid:
-        raise NotImplementedError
+    elif opt.calc_fid:
+        for m in opt.load_path:
+            epoch = load_model(m)
+            with torch.no_grad():
+                # Calculate FID
+                fn = lambda x: netG(x).detach().cpu()
+                generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
+                fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
+                # Log stats
+                logger.log({
+                    "Epoch": epoch, 
+                    "Avg Loss G": "N/A", 
+                    "Avg Loss E": "N/A",
+                    "FID": fid
+                })
+    
 
 
 

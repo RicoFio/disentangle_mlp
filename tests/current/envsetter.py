@@ -17,9 +17,9 @@ class EnvSetter():
         self.parser.add_argument("--num_workers", type=int, default=4)
         self.parser.add_argument('--log_interval', type=int, default=10,
                                 help='how many batches to wait before logging training status')
-        self.parser.add_argument("--use_gpus", type=int, nargs='+', default=[0,1])
+        self.parser.add_argument("--use_gpus", type=str, default="0,1")
 
-        self.parser.add_argument('--load_path', type=str, default="")
+        self.parser.add_argument('--load_path', type=str, nargs="+", default=[])
         self.parser.add_argument('--save_path', type=str, default=f"./data/%")
         self.parser.add_argument('--log_path', type=str, default=f"./data/%/log")
         self.parser.add_argument('--fid_path_pretrained', type=str, default="/home/shared/evaluation/fid/fid_stats_celeba.npz")
