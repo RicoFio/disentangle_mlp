@@ -91,11 +91,12 @@ if __name__ == "__main__":
                     'optimizer': optimizer.state_dict()}, opt.model_path + f"model_{str(epoch+1)}.tar")
 
                 # Calculate FID
+                fid = "N/A"
                 if opt.calc_fid:
                     fn = lambda x: model.module.decode(x).cpu()
                     generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
                     fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
-                print('====> Epoch: {} Average loss: {:.4f} FID: {:.4f}'.format(
+                print('====> Epoch: {} Average loss: {:.4f} FID: {}'.format(
                     epoch, avg_loss, fid))
 
                 # Log results

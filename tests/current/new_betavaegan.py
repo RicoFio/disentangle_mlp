@@ -234,7 +234,7 @@ if __name__ == "__main__":
                     generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_recons, device=device)
                     fid = get_fid(opt.fid_path_recons, opt.fid_path_pretrained)
 
-                print('====> Epoch: {} Avg Encoder Loss: {:.4f} Avg Decoder Loss: {:.4f} Avg Discriminator Loss: {:.4f} FID: {:.4f} Dx: {:.4f}'.format(
+                print('====> Epoch: {} Avg Encoder Loss: {:.4f} Avg Decoder Loss: {:.4f} Avg Discriminator Loss: {:.4f} FID: {} Dx: {:.4f}'.format(
                     epoch, enc_loss, dec_loss, dis_loss, fid, Dx))
 
                 # Log epoch statistics

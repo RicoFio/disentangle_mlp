@@ -40,7 +40,7 @@ class EnvSetter():
         self.parser.add_argument("--n_samples", type=int, default=1000)
         self.parser.add_argument('--n_z', type=int, nargs='+', default=[256, 8, 8])
         self.parser.add_argument('--n_hidden', type=int, default=128)
-        self.parser.add_argument('--lr', type=float, default=3e-4)
+        self.parser.add_argument('--lr', type=float, default=3e-3)
         self.parser.add_argument('--beta', type=float, default=50)
 
         self.parser.add_argument('--input_channels', type=int, default=3)
@@ -71,7 +71,7 @@ class EnvSetter():
         path = Path(save_path)
         if path.exists():
             warnings.warn("Path exists and containing files could be overwritten", UserWarning)
-            abr = input("Continue [y]/n \n") or 'y'
+            abr = 'y' #input("Continue [y]/n \n") or 'y'
             if abr is not 'y':
                 raise ValueError("User interrupted path creation")
 

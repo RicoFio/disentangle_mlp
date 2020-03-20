@@ -159,7 +159,7 @@ if __name__ == "__main__":
         start_epoch = 0
         if opt.load_path and len(opt.load_path) < 2:
             start_epoch = load_model(opt.load_path[0])
-        else:
+        elif opt.load_path and len(opt.load_path) > 1:
             raise ValueError("Cannot load more than one model for training")
 
         for epoch in range(start_epoch, opt.epochs):
@@ -181,7 +181,7 @@ if __name__ == "__main__":
                     generate_fid_samples(fn, epoch, opt.n_samples, opt.n_hidden, opt.fid_path_samples, device=device)
                     fid = get_fid(opt.fid_path_samples, opt.fid_path_pretrained)
                 # Output stats
-                print('====> Epoch: {} Average loss G: {:.4f} Average loss D: {:.4f} FID: {:.4f}'.format(
+                print('====> Epoch: {} Average loss G: {:.4f} Average loss D: {:.4f} FID: {}'.format(
                     epoch, avg_loss_G, avg_loss_D, fid))
 
                 # Log results
