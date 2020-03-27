@@ -1,0 +1,117 @@
+{
+    "meta_data": {
+        "file": "logger.py",
+        "datetime": "2020-03-15 15:05:08.675697",
+        "args": {
+            "name": "beta100",
+            "seed": 999,
+            "num_workers": 4,
+            "log_interval": 10,
+            "use_gpus": "0,1",
+            "load_path": [],
+            "save_path": "./data/beta100",
+            "log_path": "./data/beta100/log",
+            "fid_path_pretrained": "/home/shared/evaluation/fid/fid_stats_celeba.npz",
+            "dataset": "celebA",
+            "image_root_train": "/home/shared/data/celebA/train",
+            "image_root_val": "/home/shared/data/celebA/val",
+            "image_root_test": "/home/shared/data/celebA/test",
+            "epochs": 10,
+            "batch_size_train": 256,
+            "batch_size_val": 256,
+            "batch_size_test": 256,
+            "n_samples": 1000,
+            "n_z": [
+                256,
+                8,
+                8
+            ],
+            "n_hidden": 128,
+            "lr": 0.0003,
+            "beta": 100.0,
+            "input_channels": 3,
+            "img_size": 64,
+            "calc_fid": true,
+            "to_train": true,
+            "model_path": "./data/beta100/models",
+            "results_path_recons": "./data/beta100/results/recons",
+            "results_path_samples": "./data/beta100/results/samples",
+            "test_results_path_recons": "./data/beta100/test_results/recons",
+            "test_results_path_samples": "./data/beta100/test_results/samples",
+            "fid_path_recons": "./data/beta100/fid_results/recons",
+            "fid_path_samples": "./data/beta100/fid_results/samples"
+        }
+    },
+    "output": [
+        {
+            "Epoch": 0,
+            "Avg Eec Loss": 1666.454124199028,
+            "Avg Dnc Loss": 1666.454124199028,
+            "Avg Dis Loss": 0.0031102588311615986,
+            "FID": 244.36969763506934
+        },
+        {
+            "Epoch": 1,
+            "Avg Eec Loss": 1374.0871698198696,
+            "Avg Dnc Loss": 1374.0871698198696,
+            "Avg Dis Loss": 0.003223251091252683,
+            "FID": 216.04611711827692
+        },
+        {
+            "Epoch": 2,
+            "Avg Eec Loss": 1371.776092255377,
+            "Avg Dnc Loss": 1371.776092255377,
+            "Avg Dis Loss": 0.0030027036619566065,
+            "FID": 211.66626148721616
+        },
+        {
+            "Epoch": 3,
+            "Avg Eec Loss": 1356.997874890183,
+            "Avg Dnc Loss": 1356.997874890183,
+            "Avg Dis Loss": 0.0030736772388957885,
+            "FID": 185.84694741956872
+        },
+        {
+            "Epoch": 4,
+            "Avg Eec Loss": 1337.9332551560167,
+            "Avg Dnc Loss": 1337.9332551560167,
+            "Avg Dis Loss": 0.003093459214555494,
+            "FID": 175.72464710749904
+        },
+        {
+            "Epoch": 5,
+            "Avg Eec Loss": 1330.6826983922197,
+            "Avg Dnc Loss": 1330.6826983922197,
+            "Avg Dis Loss": 0.0031903222873468687,
+            "FID": 162.6492200478064
+        },
+        {
+            "Epoch": 6,
+            "Avg Eec Loss": 1327.9088466311566,
+            "Avg Dnc Loss": 1327.9088466311566,
+            "Avg Dis Loss": 0.0031522077628980895,
+            "FID": 153.0559564172783
+        },
+        {
+            "Epoch": 7,
+            "Avg Eec Loss": 1284.0150593087835,
+            "Avg Dnc Loss": 1284.0150593087835,
+            "Avg Dis Loss": 0.0033512723645757266,
+            "FID": 146.04217519216087
+        },
+        {
+            "Epoch": 8,
+            "Avg Eec Loss": 1300.3483717154775,
+            "Avg Dnc Loss": 1300.3483717154775,
+            "Avg Dis Loss": 0.003215973932484647,
+            "FID": 141.66302374178895
+        },
+        {
+            "Epoch": 9,
+            "Avg Eec Loss": 1270.567593428805,
+            "Avg Dnc Loss": 1270.567593428805,
+            "Avg Dis Loss": 0.0033202047760415077,
+            "FID": 137.98779178364916
+        }
+    ]
+}

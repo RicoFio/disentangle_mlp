@@ -1,1 +1,0 @@
-python main_1.py --test_folder /home/shared/data/test --train_folder /home/shared/data/train/ --save_path "/content/drive/My Drive/Colab Notebooks/models/" --load_path "/home/shared/saved_models/italian_celeba/model_epoch_0.tar"
