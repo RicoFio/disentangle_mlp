@@ -1,0 +1,124 @@
+{
+    "meta_data": {
+        "file": "logger.py",
+        "datetime": "2020-03-14 06:54:47.631105",
+        "args": {
+            "name": "beta25",
+            "seed": 999,
+            "num_workers": 4,
+            "log_interval": 10,
+            "use_gpus": "0,1",
+            "load_path": "",
+            "save_path": "./data/beta25",
+            "log_path": "./data/beta25/log",
+            "fid_path_pretrained": "/home/shared/evaluation/fid/fid_stats_celeba.npz",
+            "dataset": "celebA",
+            "image_root_train": "/home/shared/data/celebA/train",
+            "image_root_val": "/home/shared/data/celebA/val",
+            "image_root_test": "/home/shared/data/celebA/test",
+            "epochs": 30,
+            "batch_size_train": 256,
+            "batch_size_val": 256,
+            "batch_size_test": 256,
+            "n_samples": 1000,
+            "n_z": [
+                256,
+                8,
+                8
+            ],
+            "n_hidden": 128,
+            "lr": 0.0003,
+            "beta": 25.0,
+            "input_channels": 3,
+            "img_size": 64,
+            "calc_fid": true,
+            "to_train": true,
+            "model_path": "./data/beta25/models",
+            "results_path_recons": "./data/beta25/results/recons",
+            "results_path_samples": "./data/beta25/results/samples",
+            "test_results_path_recons": "./data/beta25/test_results/recons",
+            "test_results_path_samples": "./data/beta25/test_results/samples",
+            "fid_path_recons": "./data/beta25/fid_results/recons",
+            "fid_path_samples": "./data/beta25/fid_results/samples"
+        }
+    },
+    "output": [
+        {
+            "Epoch": 0,
+            "Avg Eec Loss": 1138.081820375712,
+            "Avg Dnc Loss": 1138.081820375712,
+            "Avg Dis Loss": 0.0030616996136456406,
+            "FID": 223.35419126485098
+        },
+        {
+            "Epoch": 1,
+            "Avg Eec Loss": 872.9402808431785,
+            "Avg Dnc Loss": 872.9402808431785,
+            "Avg Dis Loss": 0.0031262288801274783,
+            "FID": 191.28821811472264
+        },
+        {
+            "Epoch": 2,
+            "Avg Eec Loss": 845.546438516382,
+            "Avg Dnc Loss": 845.546438516382,
+            "Avg Dis Loss": 0.003160151553703565,
+            "FID": 166.90121136126606
+        },
+        {
+            "Epoch": 3,
+            "Avg Eec Loss": 832.7600241481898,
+            "Avg Dnc Loss": 832.7600241481898,
+            "Avg Dis Loss": 0.0031630159623274095,
+            "FID": 154.87976109736042
+        },
+        {
+            "Epoch": 4,
+            "Avg Eec Loss": 816.8427066438431,
+            "Avg Dnc Loss": 816.8427066438431,
+            "Avg Dis Loss": 0.0030943311352156816,
+            "FID": 146.35118696302277
+        },
+        {
+            "Epoch": 5,
+            "Avg Eec Loss": 801.3658159891811,
+            "Avg Dnc Loss": 801.3658159891811,
+            "Avg Dis Loss": 0.0032466851304049672,
+            "FID": 141.05234441038147
+        },
+        {
+            "Epoch": 6,
+            "Avg Eec Loss": 799.1535048664996,
+            "Avg Dnc Loss": 799.1535048664996,
+            "Avg Dis Loss": 0.00317700963190133,
+            "FID": 137.16576790463603
+        },
+        {
+            "Epoch": 7,
+            "Avg Eec Loss": 792.1279910695087,
+            "Avg Dnc Loss": 792.1279910695087,
+            "Avg Dis Loss": 0.0031629726828540164,
+            "FID": 135.06085640070773
+        },
+        {
+            "Epoch": 8,
+            "Avg Eec Loss": 787.5278256146672,
+            "Avg Dnc Loss": 787.5278256146672,
+            "Avg Dis Loss": 0.003197334656936072,
+            "FID": 132.3021897621982
+        },
+        {
+            "Epoch": 9,
+            "Avg Eec Loss": 784.2714262867771,
+            "Avg Dnc Loss": 784.2714262867771,
+            "Avg Dis Loss": 0.003215977755112061,
+            "FID": 130.06637982977978
+        },
+        {
+            "Epoch": 10,
+            "Avg Eec Loss": 775.7086563523294,
+            "Avg Dnc Loss": 775.7086563523294,
+            "Avg Dis Loss": 0.0032103163613366745,
+            "FID": 128.33517109069882
+        }
+    ]
+}
